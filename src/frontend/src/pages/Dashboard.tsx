@@ -1,0 +1,785 @@
+import { Link } from "@tanstack/react-router";
+import {
+  ArrowRight,
+  Award,
+  BarChart2,
+  BookOpen,
+  Briefcase,
+  CheckCircle2,
+  ClipboardCheck,
+  Code2,
+  FileText,
+  Flame,
+  GraduationCap,
+  Map as MapIcon,
+  Target,
+  TrendingUp,
+  XCircle,
+  Zap,
+} from "lucide-react";
+import { useEffect, useMemo } from "react";
+import {
+  Bar,
+  BarChart,
+  Cell,
+  PolarAngleAxis,
+  PolarGrid,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import AppShell from "../components/AppShell";
+import { getScoreColor, getScoreLabel } from "../utils/atsEngine";
+import { getStreak } from "../utils/extras";
+import { ROLES, getRoleEligibility } from "../utils/roleData";
+import {
+  getResumeCompletionPercent,
+  loadATSResult,
+  loadCareerProfile,
+  loadResume,
+} from "../utils/storage";
+
+const FEATURE_CARDS = [
+  {
+    title: "Create Resume",
+    desc: "Build your professional resume",
+    path: "/resume-builder",
+    icon: FileText,
+    color: "#7C5CFF",
+    bg: "rgba(124,92,255,0.15)",
+  },
+  {
+    title: "Analyze Resume",
+    desc: "Check ATS score & keywords",
+    path: "/ats-analyzer",
+    icon: Target,
+    color: "#35D0C7",
+    bg: "rgba(53,208,199,0.15)",
+  },
+  {
+    title: "Career Roles",
+    desc: "Find your eligible roles",
+    path: "/role-eligibility",
+    icon: Award,
+    color: "#39D98A",
+    bg: "rgba(57,217,138,0.15)",
+  },
+  {
+    title: "Skill Learning",
+    desc: "Learn missing skills",
+    path: "/learning-resources",
+    icon: BookOpen,
+    color: "#F59E0B",
+    bg: "rgba(245,158,11,0.15)",
+  },
+  {
+    title: "Free Certifications",
+    desc: "Earn industry certificates",
+    path: "/certifications",
+    icon: GraduationCap,
+    color: "#EC4899",
+    bg: "rgba(236,72,153,0.15)",
+  },
+  {
+    title: "CSE Projects",
+    desc: "Portfolio-worthy project ideas",
+    path: "/projects",
+    icon: Code2,
+    color: "#6366F1",
+    bg: "rgba(99,102,241,0.15)",
+  },
+  {
+    title: "Mock Tests",
+    desc: "Practice aptitude & DSA",
+    path: "/mock-tests",
+    icon: ClipboardCheck,
+    color: "#F97316",
+    bg: "rgba(249,115,22,0.15)",
+  },
+  {
+    title: "Jobs & Internships",
+    desc: "Apply on top platforms",
+    path: "/jobs",
+    icon: Briefcase,
+    color: "#EF4444",
+    bg: "rgba(239,68,68,0.15)",
+  },
+  {
+    title: "Career Roadmap",
+    desc: "Step-by-step career path",
+    path: "/career-roadmap",
+    icon: MapIcon,
+    color: "#14B8A6",
+    bg: "rgba(20,184,166,0.15)",
+  },
+  {
+    title: "Profile Progress",
+    desc: "Track your readiness",
+    path: "/dashboard",
+    icon: BarChart2,
+    color: "#A855F7",
+    bg: "rgba(168,85,247,0.15)",
+  },
+];
+
+const TOP_SKILLS = [
+  { skill: "TypeScript", category: "Programming" },
+  { skill: "Docker", category: "DevOps" },
+  { skill: "SQL", category: "Database" },
+  { skill: "Machine Learning", category: "AI/ML" },
+  { skill: "System Design", category: "Architecture" },
+];
+
+function ScoreRing({
+  score,
+  color,
+  size = 120,
+}: { score: number; color: string; size?: number }) {
+  const r = (size - 16) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+  return (
+    <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
+      <title>Score ring</title>
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="rgba(255,255,255,0.07)"
+        strokeWidth="8"
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth="8"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        style={{ transition: "stroke-dashoffset 1s ease" }}
+      />
+    </svg>
+  );
+}
+
+function EmptyAnalyticsState() {
+  return (
+    <div
+      className="glass-card p-10 flex flex-col items-center justify-center text-center col-span-full"
+      data-ocid="dashboard.empty_state"
+    >
+      <div className="w-20 h-20 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-5">
+        <BarChart2 size={36} className="text-purple-400" />
+      </div>
+      <h3 className="text-white font-bold text-xl mb-2">No Analytics Yet</h3>
+      <p className="text-white/50 text-sm mb-6 max-w-sm">
+        Create or Upload a Resume to see your ATS score, skill gaps, eligible
+        roles, and career readiness.
+      </p>
+      <div className="flex flex-wrap gap-3 justify-center">
+        <Link
+          to="/resume-builder"
+          className="btn-primary flex items-center gap-2 py-2.5 px-5"
+          data-ocid="dashboard.empty_state.create_resume.button"
+        >
+          <FileText size={15} /> Build Resume
+        </Link>
+        <Link
+          to="/ats-analyzer"
+          className="btn-secondary flex items-center gap-2 py-2.5 px-5"
+          data-ocid="dashboard.empty_state.analyze_resume.button"
+        >
+          <Target size={15} /> Analyze Resume
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export default function Dashboard() {
+  const resume = loadResume();
+  const atsResult = loadATSResult();
+  const careerProfile = loadCareerProfile();
+
+  const hasData = !!(resume || atsResult);
+
+  const completionPct = getResumeCompletionPercent(resume);
+  const atsScore = atsResult?.score ?? 0;
+  const readiness = careerProfile?.readinessScore ?? 0;
+  const streakData = getStreak();
+
+  const certCount = (() => {
+    try {
+      const bm = localStorage.getItem("smartresume_bookmarks");
+      return bm ? (JSON.parse(bm) as string[]).length : 0;
+    } catch {
+      return 0;
+    }
+  })();
+
+  const careerReadiness = Math.round(
+    completionPct * 0.3 +
+      atsScore * 0.3 +
+      Math.min(certCount * 5, 20) +
+      readiness * 0.2,
+  );
+
+  // Only add a completion notification if they have actual resume data
+  useEffect(() => {
+    if (resume && completionPct > 0) {
+      const key = `dashboard_notif_${completionPct}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1");
+      }
+    }
+  }, [resume, completionPct]);
+
+  const eligibleRoles = useMemo(() => {
+    if (!resume) return [];
+    return Object.entries(ROLES)
+      .map(([name]) => ({ name, ...getRoleEligibility(resume.skills, name) }))
+      .filter((r) => r.eligible);
+  }, [resume]);
+
+  const skillCoverageData = useMemo(() => {
+    if (!resume) return [];
+    return Object.entries(ROLES)
+      .slice(0, 6)
+      .map(([name]) => {
+        const { matchPercent } = getRoleEligibility(resume.skills, name);
+        return {
+          role: name.split(" ").slice(0, 2).join(" "),
+          percent: matchPercent,
+        };
+      });
+  }, [resume]);
+
+  const radarData = [
+    { subject: "Resume", value: completionPct },
+    { subject: "ATS Score", value: atsScore },
+    {
+      subject: "Skills",
+      value: Math.min((resume?.skills.length ?? 0) * 10, 100),
+    },
+    {
+      subject: "Projects",
+      value: Math.min((resume?.projects.length ?? 0) * 25, 100),
+    },
+    { subject: "Readiness", value: readiness },
+  ];
+
+  const kpis = [
+    {
+      label: "Resume Completion",
+      value: `${completionPct}%`,
+      icon: FileText,
+      color: "#7C5CFF",
+      sub: completionPct >= 80 ? "Great" : "Needs work",
+      num: completionPct,
+    },
+    {
+      label: "ATS Score",
+      value: `${atsScore}/100`,
+      icon: Target,
+      color: getScoreColor(atsScore),
+      sub: getScoreLabel(atsScore),
+      num: atsScore,
+    },
+    {
+      label: "Eligible Roles",
+      value: `${eligibleRoles.length}`,
+      icon: Award,
+      color: "#39D98A",
+      sub: "out of 8 roles",
+      num: eligibleRoles.length * 12.5,
+    },
+    {
+      label: "Career Readiness",
+      value: `${readiness}%`,
+      icon: TrendingUp,
+      color: "#4B8BFF",
+      sub: "Keep improving",
+      num: readiness,
+    },
+    {
+      label: "Certifications",
+      value: `${certCount}`,
+      icon: GraduationCap,
+      color: "#EC4899",
+      sub: "bookmarked",
+      num: certCount * 10,
+    },
+    {
+      label: "Projects Built",
+      value: `${resume?.projects.length ?? 0}`,
+      icon: Code2,
+      color: "#F97316",
+      sub: "in resume",
+      num: (resume?.projects.length ?? 0) * 25,
+    },
+  ];
+
+  return (
+    <AppShell title="Dashboard" subtitle="Your career overview">
+      <div className="max-w-7xl mx-auto space-y-6" data-ocid="dashboard.page">
+        {/* Feature Navigation Grid */}
+        <div data-ocid="dashboard.features.section">
+          <h2 className="section-heading mb-4">Quick Access</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {FEATURE_CARDS.map((card, i) => {
+              const Icon = card.icon;
+              return (
+                <Link
+                  key={card.path + card.title}
+                  to={card.path}
+                  className="glass-card-hover p-4 flex flex-col items-center text-center gap-2 group"
+                  data-ocid={`dashboard.feature.item.${i + 1}`}
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
+                    style={{ background: card.bg }}
+                  >
+                    <Icon size={18} style={{ color: card.color }} />
+                  </div>
+                  <p className="text-white text-xs font-semibold leading-tight">
+                    {card.title}
+                  </p>
+                  <p className="text-white/40 text-[10px] leading-tight hidden sm:block">
+                    {card.desc}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Streak Card — always visible */}
+        <div
+          className="glass-card p-5 flex items-center gap-4"
+          data-ocid="dashboard.streak.card"
+        >
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-orange-500/15 border border-orange-500/25">
+            <Flame size={28} className="text-orange-400" />
+          </div>
+          <div>
+            <p className="text-white/50 text-xs uppercase tracking-wider font-medium">
+              Daily Streak
+            </p>
+            <p className="text-3xl font-extrabold text-white">
+              {streakData.count}{" "}
+              <span className="text-lg text-orange-400">days</span>
+            </p>
+            <p className="text-white/40 text-xs mt-0.5">
+              Keep logging in daily to maintain your streak!
+            </p>
+          </div>
+        </div>
+
+        {/* Analytics — only shown when data exists */}
+        {hasData ? (
+          <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+              {kpis.map((kpi, i) => {
+                const Icon = kpi.icon;
+                return (
+                  <div
+                    // biome-ignore lint/suspicious/noArrayIndexKey: stable index
+                    key={i}
+                    className={`kpi-card animate-fade-in-up stagger-${i + 1}`}
+                    data-ocid={`dashboard.kpi.item.${i + 1}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-white/50 text-[10px] font-medium uppercase tracking-wider">
+                        {kpi.label}
+                      </p>
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ background: `${kpi.color}20` }}
+                      >
+                        <Icon size={13} style={{ color: kpi.color }} />
+                      </div>
+                    </div>
+                    <div className="text-2xl font-bold text-white mt-1">
+                      {kpi.value}
+                    </div>
+                    <p className="text-white/40 text-[10px]">{kpi.sub}</p>
+                    <div className="progress-bar-track mt-2">
+                      <div
+                        className="progress-bar-fill"
+                        style={{ width: `${Math.min(kpi.num, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Career Readiness Meter */}
+            <div
+              className="glass-card p-5"
+              data-ocid="dashboard.readiness_meter.card"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-white/50 text-xs uppercase tracking-wider font-medium">
+                  Career Readiness Score
+                </p>
+                <span
+                  className="text-2xl font-extrabold"
+                  style={{ color: getScoreColor(careerReadiness) }}
+                >
+                  {careerReadiness}%
+                </span>
+              </div>
+              <div className="progress-bar-track h-4 mb-2">
+                <div
+                  className="h-full rounded-full transition-all duration-1000"
+                  style={{
+                    width: `${careerReadiness}%`,
+                    background: `linear-gradient(90deg, #7C5CFF, ${getScoreColor(careerReadiness)})`,
+                  }}
+                />
+              </div>
+              <p className="text-white/40 text-xs">
+                {careerReadiness >= 80
+                  ? "You're job-ready! 🎉"
+                  : careerReadiness >= 50
+                    ? "Making good progress 👍"
+                    : "Keep learning and building! 💪"}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* ATS Score Ring */}
+              <div
+                className="glass-card p-6 flex flex-col items-center"
+                data-ocid="dashboard.ats_score.panel"
+              >
+                <h3 className="section-heading text-center">ATS Score</h3>
+                <div className="relative">
+                  <ScoreRing
+                    score={atsScore}
+                    color={getScoreColor(atsScore)}
+                    size={140}
+                  />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-bold text-white">
+                      {atsScore}
+                    </span>
+                    <span className="text-white/40 text-xs">/100</span>
+                  </div>
+                </div>
+                <div className="mt-4 text-center">
+                  <span
+                    className="text-lg font-semibold"
+                    style={{ color: getScoreColor(atsScore) }}
+                  >
+                    {getScoreLabel(atsScore)}
+                  </span>
+                  <p className="text-white/40 text-sm mt-1">
+                    Last analyzed{" "}
+                    {atsResult?.analyzedAt
+                      ? new Date(atsResult.analyzedAt).toLocaleDateString()
+                      : "—"}
+                  </p>
+                </div>
+                <Link
+                  to="/ats-analyzer"
+                  className="mt-4 btn-secondary text-xs py-2 px-4 flex items-center gap-1"
+                  data-ocid="dashboard.ats_analyzer.button"
+                >
+                  Analyze Again <ArrowRight size={12} />
+                </Link>
+              </div>
+
+              {/* Skill Coverage Chart */}
+              {resume && skillCoverageData.length > 0 ? (
+                <div
+                  className="glass-card p-6 lg:col-span-2"
+                  data-ocid="dashboard.skills_chart.panel"
+                >
+                  <h3 className="section-heading">Role Skill Coverage</h3>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart
+                      data={skillCoverageData}
+                      margin={{ top: 4, right: 4, bottom: 4, left: -20 }}
+                    >
+                      <XAxis
+                        dataKey="role"
+                        tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                        domain={[0, 100]}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "rgba(11,18,54,0.95)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: 8,
+                          color: "#fff",
+                        }}
+                        formatter={(v: number) => [`${v}%`, "Match"]}
+                      />
+                      <Bar dataKey="percent" radius={[4, 4, 0, 0]}>
+                        {skillCoverageData.map((_, idx) => (
+                          <Cell
+                            // biome-ignore lint/suspicious/noArrayIndexKey: stable index
+                            key={idx}
+                            fill={idx % 2 === 0 ? "#7C5CFF" : "#35D0C7"}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div
+                  className="glass-card p-6 lg:col-span-2 flex flex-col items-center justify-center text-center"
+                  data-ocid="dashboard.skills_chart.empty"
+                >
+                  <BarChart2 size={36} className="text-white/20 mb-3" />
+                  <p className="text-white/50 font-medium">No Skill Data Yet</p>
+                  <p className="text-white/30 text-sm mt-1 mb-4">
+                    Build your resume to see role skill coverage
+                  </p>
+                  <Link
+                    to="/resume-builder"
+                    className="btn-secondary text-xs py-2 px-4 flex items-center gap-1"
+                  >
+                    Build Resume <ArrowRight size={12} />
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Skill Recommendations */}
+            <div
+              className="glass-card p-6"
+              data-ocid="dashboard.skill_recommendations.panel"
+            >
+              <h3 className="section-heading">Skill Recommendations</h3>
+              <p className="text-white/40 text-sm mb-4">
+                Top skills to learn based on market demand and role requirements
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {TOP_SKILLS.map((item, i) => (
+                  <div
+                    key={item.skill}
+                    className="glass-card-hover p-4"
+                    data-ocid={`dashboard.skill_rec.item.${i + 1}`}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center mb-2">
+                      <Zap size={14} className="text-purple-400" />
+                    </div>
+                    <p className="text-white font-semibold text-sm">
+                      {item.skill}
+                    </p>
+                    <p className="text-white/40 text-xs mb-3">
+                      {item.category}
+                    </p>
+                    <Link
+                      to="/learning-resources"
+                      className="text-cyan-400 text-xs flex items-center gap-1 hover:text-cyan-300"
+                      data-ocid={`dashboard.skill_rec.learn.${i + 1}`}
+                    >
+                      Learn Now <ArrowRight size={11} />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Career Readiness Radar */}
+              <div
+                className="glass-card p-6"
+                data-ocid="dashboard.readiness.panel"
+              >
+                <h3 className="section-heading">Career Readiness</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                    <PolarAngleAxis
+                      dataKey="subject"
+                      tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 11 }}
+                    />
+                    <Radar
+                      name="Score"
+                      dataKey="value"
+                      stroke="#7C5CFF"
+                      fill="#7C5CFF"
+                      fillOpacity={0.3}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Eligible Roles */}
+              <div
+                className="glass-card p-6"
+                data-ocid="dashboard.eligible_roles.panel"
+              >
+                <h3 className="section-heading">Eligible Roles</h3>
+                <div className="space-y-2">
+                  {eligibleRoles.length === 0 ? (
+                    <p
+                      className="text-white/40 text-sm"
+                      data-ocid="dashboard.eligible_roles.empty_state"
+                    >
+                      Add more skills to unlock eligible roles
+                    </p>
+                  ) : (
+                    eligibleRoles.map((r, i) => (
+                      <div
+                        key={r.name}
+                        className="flex items-center justify-between py-2 border-b border-white/5 last:border-0"
+                        data-ocid={`dashboard.eligible_roles.item.${i + 1}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2
+                            size={14}
+                            className="text-green-400 flex-shrink-0"
+                          />
+                          <span className="text-white text-sm">{r.name}</span>
+                        </div>
+                        <span className="text-green-400 text-xs font-semibold">
+                          {r.matchPercent}%
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <Link
+                  to="/role-eligibility"
+                  className="mt-4 text-purple-400 text-xs flex items-center gap-1 hover:text-purple-300"
+                  data-ocid="dashboard.view_roles.link"
+                >
+                  View All Roles <ArrowRight size={12} />
+                </Link>
+              </div>
+
+              {/* Missing Skills */}
+              <div
+                className="glass-card p-6"
+                data-ocid="dashboard.missing_skills.panel"
+              >
+                <h3 className="section-heading">Missing Skills</h3>
+                <div className="flex flex-wrap gap-2">
+                  {!atsResult ? (
+                    <p
+                      className="text-white/40 text-sm"
+                      data-ocid="dashboard.missing_skills.no_analysis"
+                    >
+                      Run ATS analysis to see missing skills
+                    </p>
+                  ) : atsResult.missingSkills.length === 0 ? (
+                    <p
+                      className="text-white/40 text-sm"
+                      data-ocid="dashboard.missing_skills.empty_state"
+                    >
+                      Great! No critical skills missing
+                    </p>
+                  ) : (
+                    atsResult.missingSkills.slice(0, 8).map((skill, i) => (
+                      <span
+                        // biome-ignore lint/suspicious/noArrayIndexKey: stable index
+                        key={i}
+                        className="skill-chip-missing flex items-center gap-1"
+                        data-ocid={`dashboard.missing_skills.item.${i + 1}`}
+                      >
+                        <XCircle size={11} /> {skill}
+                      </span>
+                    ))
+                  )}
+                </div>
+                <Link
+                  to="/learning-resources"
+                  className="mt-4 text-cyan-400 text-xs flex items-center gap-1 hover:text-cyan-300"
+                  data-ocid="dashboard.learn.link"
+                >
+                  Start Learning <ArrowRight size={12} />
+                </Link>
+              </div>
+            </div>
+
+            {/* Resume Card */}
+            {resume && (
+              <div
+                className="glass-card p-6"
+                data-ocid="dashboard.resume.panel"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="section-heading mb-1">My Resume</h3>
+                    <p className="text-white/40 text-sm">
+                      {resume.name} · {resume.email}
+                    </p>
+                  </div>
+                  <Link
+                    to="/resume-builder"
+                    className="btn-primary text-sm py-2 px-4 flex items-center gap-1"
+                    data-ocid="dashboard.edit_resume.button"
+                  >
+                    <FileText size={14} /> Edit
+                  </Link>
+                </div>
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[
+                    { label: "Skills", value: resume.skills.length },
+                    { label: "Projects", value: resume.projects.length },
+                    { label: "Experience", value: resume.experience.length },
+                    {
+                      label: "Certifications",
+                      value: resume.certifications.length,
+                    },
+                  ].map((s, i) => (
+                    <div
+                      // biome-ignore lint/suspicious/noArrayIndexKey: stable index
+                      key={i}
+                      className="bg-white/5 rounded-xl p-3 text-center"
+                      data-ocid={`dashboard.resume.stat.${i + 1}`}
+                    >
+                      <div className="text-2xl font-bold text-white">
+                        {s.value}
+                      </div>
+                      <div className="text-white/40 text-xs">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {resume.skills.slice(0, 8).map((s) => (
+                    <span
+                      key={s}
+                      className="skill-chip flex items-center gap-1"
+                    >
+                      <Zap size={10} />
+                      {s}
+                    </span>
+                  ))}
+                  {resume.skills.length > 8 && (
+                    <span className="skill-chip text-white/40">
+                      +{resume.skills.length - 8} more
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <EmptyAnalyticsState />
+        )}
+      </div>
+    </AppShell>
+  );
+}
