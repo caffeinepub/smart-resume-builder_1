@@ -1,3 +1,4 @@
+import { getUserKey } from "./auth";
 // ============================================================
 // TypeScript types
 // ============================================================
@@ -161,22 +162,25 @@ const _sampleATSResult: ATSResult = {
 };
 
 // ============================================================
-// Storage helpers
+// Storage helpers — per-user keys
 // ============================================================
-const KEYS = {
-  resume: "career_resume",
-  atsResult: "career_ats_result",
-  careerProfile: "career_profile",
-  initialized: "career_initialized",
-};
+function resumeKey() {
+  return getUserKey("resume");
+}
+function atsKey() {
+  return getUserKey("ats");
+}
+function careerProfileKey() {
+  return getUserKey("career_profile");
+}
 
 export function saveResume(data: ResumeData): void {
-  localStorage.setItem(KEYS.resume, JSON.stringify(data));
+  localStorage.setItem(resumeKey(), JSON.stringify(data));
 }
 
 export function loadResume(): ResumeData | null {
   try {
-    const raw = localStorage.getItem(KEYS.resume);
+    const raw = localStorage.getItem(resumeKey());
     return raw ? (JSON.parse(raw) as ResumeData) : null;
   } catch {
     return null;
@@ -184,12 +188,12 @@ export function loadResume(): ResumeData | null {
 }
 
 export function saveATSResult(result: ATSResult): void {
-  localStorage.setItem(KEYS.atsResult, JSON.stringify(result));
+  localStorage.setItem(atsKey(), JSON.stringify(result));
 }
 
 export function loadATSResult(): ATSResult | null {
   try {
-    const raw = localStorage.getItem(KEYS.atsResult);
+    const raw = localStorage.getItem(atsKey());
     return raw ? (JSON.parse(raw) as ATSResult) : null;
   } catch {
     return null;
@@ -197,12 +201,12 @@ export function loadATSResult(): ATSResult | null {
 }
 
 export function saveCareerProfile(profile: CareerProfile): void {
-  localStorage.setItem(KEYS.careerProfile, JSON.stringify(profile));
+  localStorage.setItem(careerProfileKey(), JSON.stringify(profile));
 }
 
 export function loadCareerProfile(): CareerProfile | null {
   try {
-    const raw = localStorage.getItem(KEYS.careerProfile);
+    const raw = localStorage.getItem(careerProfileKey());
     return raw ? (JSON.parse(raw) as CareerProfile) : null;
   } catch {
     return null;

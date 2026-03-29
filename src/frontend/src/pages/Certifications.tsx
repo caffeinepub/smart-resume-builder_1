@@ -2,12 +2,14 @@ import {
   Award,
   Bookmark,
   BookmarkCheck,
+  CheckCircle2,
   Clock,
   ExternalLink,
 } from "lucide-react";
 import { useState } from "react";
 import AppShell from "../components/AppShell";
-import { isBookmarked, toggleBookmark } from "../utils/extras";
+import { getUserKey } from "../utils/auth";
+import { addNotification, isBookmarked, toggleBookmark } from "../utils/extras";
 
 interface Course {
   id: string;
@@ -163,14 +165,29 @@ const PLATFORM_COLORS: Record<string, string> = {
   NPTEL: "#2C3E50",
   "Infosys Springboard": "#007CC3",
   "Google / Coursera": "#34A853",
-  "AWS Skill Builder - ML": "#FF9900",
 };
+
+const COMPLETIONS_KEY = () => getUserKey("smartresume_cert_completions");
+
+function loadCompletions(): string[] {
+  try {
+    const raw = localStorage.getItem(COMPLETIONS_KEY());
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCompletions(ids: string[]): void {
+  localStorage.setItem(COMPLETIONS_KEY(), JSON.stringify(ids));
+}
 
 export default function Certifications() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [bookmarkState, setBookmarkState] = useState<Record<string, boolean>>(
     () => Object.fromEntries(COURSES.map((c) => [c.id, isBookmarked(c.id)])),
   );
+  const [completions, setCompletions] = useState<string[]>(loadCompletions);
 
   const filtered =
     activeCategory === "All"
@@ -182,23 +199,46 @@ export default function Certifications() {
     setBookmarkState((prev) => ({ ...prev, [id]: newState }));
   };
 
+  const handleComplete = (course: Course) => {
+    if (completions.includes(course.id)) return;
+    const updated = [...completions, course.id];
+    setCompletions(updated);
+    saveCompletions(updated);
+    addNotification(`🏆 Certification completed: ${course.name}`);
+  };
+
   return (
     <AppShell
       title="Free Certifications"
       subtitle="Earn certificates from top platforms"
     >
       <div className="max-w-7xl mx-auto" data-ocid="certifications.page">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white mb-1">
-            Free Certification Courses
-          </h1>
-          <p className="text-white/40 text-sm">
-            Industry-recognized certificates from top providers — all free to
-            start
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-1">
+              Free Certification Courses
+            </h1>
+            <p className="text-white/40 text-sm">
+              Industry-recognized certificates from top providers — all free to
+              start
+            </p>
+          </div>
+          {completions.length > 0 && (
+            <div
+              className="flex items-center gap-2 px-4 py-2 rounded-full flex-shrink-0"
+              style={{
+                background: "rgba(57,217,138,0.15)",
+                border: "1px solid rgba(57,217,138,0.3)",
+              }}
+            >
+              <CheckCircle2 size={15} className="text-green-400" />
+              <span className="text-green-400 font-semibold text-sm">
+                Completed: {completions.length}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Category Filters */}
         <div
           className="flex flex-wrap gap-2 mb-6"
           data-ocid="certifications.filter.tab"
@@ -220,13 +260,13 @@ export default function Certifications() {
           ))}
         </div>
 
-        {/* Course Grid */}
         <div
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
           data-ocid="certifications.list"
         >
           {filtered.map((course, i) => {
             const bookmarked = bookmarkState[course.id];
+            const completed = completions.includes(course.id);
             const platformColor = PLATFORM_COLORS[course.platform] ?? "#7C5CFF";
             return (
               <div
@@ -274,23 +314,42 @@ export default function Certifications() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 font-medium">
-                    <Award size={11} /> Free Certificate
-                  </span>
+                  {completed ? (
+                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-500/20 border border-green-500/40 text-green-400 font-semibold">
+                      <CheckCircle2 size={11} /> ✓ Completed
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 font-medium">
+                      <Award size={11} /> Free Certificate
+                    </span>
+                  )}
                   <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
                     {course.category}
                   </span>
                 </div>
 
-                <a
-                  href={course.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-auto btn-primary text-xs py-2 px-4 flex items-center justify-center gap-1.5"
-                  data-ocid={`certifications.start.${i + 1}`}
-                >
-                  Start Learning <ExternalLink size={12} />
-                </a>
+                <div className="mt-auto flex gap-2">
+                  <a
+                    href={course.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 btn-primary text-xs py-2 px-4 flex items-center justify-center gap-1.5"
+                    data-ocid={`certifications.start.${i + 1}`}
+                  >
+                    Start Learning <ExternalLink size={12} />
+                  </a>
+                  {!completed && (
+                    <button
+                      type="button"
+                      onClick={() => handleComplete(course)}
+                      className="btn-secondary text-xs py-2 px-3 flex items-center gap-1 flex-shrink-0"
+                      title="Mark as completed"
+                      data-ocid={`certifications.complete_button.${i + 1}`}
+                    >
+                      <CheckCircle2 size={12} /> Done
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

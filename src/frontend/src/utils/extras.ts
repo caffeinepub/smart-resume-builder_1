@@ -1,3 +1,4 @@
+import { getUserKey } from "./auth";
 // ============================================================
 // Dark Mode
 // ============================================================
@@ -78,7 +79,7 @@ export function updateStreak(): number {
 // ============================================================
 export function getBookmarks(): string[] {
   try {
-    const raw = localStorage.getItem("smartresume_bookmarks");
+    const raw = localStorage.getItem(getUserKey("smartresume_bookmarks"));
     return raw ? (JSON.parse(raw) as string[]) : [];
   } catch {
     return [];
@@ -96,7 +97,10 @@ export function toggleBookmark(id: string): boolean {
     bookmarks.splice(idx, 1);
     newState = false;
   }
-  localStorage.setItem("smartresume_bookmarks", JSON.stringify(bookmarks));
+  localStorage.setItem(
+    getUserKey("smartresume_bookmarks"),
+    JSON.stringify(bookmarks),
+  );
   return newState;
 }
 
@@ -116,7 +120,7 @@ export interface Notification {
 
 export function getNotifications(): Notification[] {
   try {
-    const raw = localStorage.getItem("smartresume_notifications");
+    const raw = localStorage.getItem(getUserKey("smartresume_notifications"));
     return raw ? (JSON.parse(raw) as Notification[]) : [];
   } catch {
     return [];
@@ -134,14 +138,17 @@ export function addNotification(message: string): void {
   });
   // keep last 20
   localStorage.setItem(
-    "smartresume_notifications",
+    getUserKey("smartresume_notifications"),
     JSON.stringify(notifs.slice(0, 20)),
   );
 }
 
 export function markAllRead(): void {
   const notifs = getNotifications().map((n) => ({ ...n, read: true }));
-  localStorage.setItem("smartresume_notifications", JSON.stringify(notifs));
+  localStorage.setItem(
+    getUserKey("smartresume_notifications"),
+    JSON.stringify(notifs),
+  );
 }
 
 export function getUnreadCount(): number {

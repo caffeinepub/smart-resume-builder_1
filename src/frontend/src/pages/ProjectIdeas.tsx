@@ -1,6 +1,16 @@
-import { Code2, ExternalLink, Star } from "lucide-react";
+import {
+  CheckCircle2,
+  Code2,
+  ExternalLink,
+  PlayCircle,
+  Star,
+} from "lucide-react";
 import { useState } from "react";
 import AppShell from "../components/AppShell";
+import { getUserKey } from "../utils/auth";
+import { addNotification } from "../utils/extras";
+
+type ProjectStatus = "Not Started" | "In Progress" | "Completed";
 
 interface ProjectIdea {
   id: string;
@@ -13,7 +23,6 @@ interface ProjectIdea {
 }
 
 const PROJECTS: ProjectIdea[] = [
-  // Beginner
   {
     id: "todo",
     name: "ToDo App",
@@ -93,7 +102,6 @@ const PROJECTS: ProjectIdea[] = [
     ],
     resumeWorth: 3,
   },
-  // Intermediate
   {
     id: "resume-builder",
     name: "Resume Builder",
@@ -174,7 +182,6 @@ const PROJECTS: ProjectIdea[] = [
     ],
     resumeWorth: 5,
   },
-  // Advanced
   {
     id: "ai-resume",
     name: "AI Resume Analyzer",
@@ -277,6 +284,42 @@ const DIFFICULTY_CONFIG = {
   },
 };
 
+const STATUS_CONFIG: Record<
+  ProjectStatus,
+  { color: string; bg: string; border: string }
+> = {
+  "Not Started": {
+    color: "rgba(255,255,255,0.4)",
+    bg: "rgba(255,255,255,0.05)",
+    border: "rgba(255,255,255,0.1)",
+  },
+  "In Progress": {
+    color: "#4B8BFF",
+    bg: "rgba(75,139,255,0.15)",
+    border: "rgba(75,139,255,0.35)",
+  },
+  Completed: {
+    color: "#39D98A",
+    bg: "rgba(57,217,138,0.15)",
+    border: "rgba(57,217,138,0.35)",
+  },
+};
+
+const STATUS_KEY = () => getUserKey("smartresume_project_status");
+
+function loadStatuses(): Record<string, ProjectStatus> {
+  try {
+    const raw = localStorage.getItem(STATUS_KEY());
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStatuses(data: Record<string, ProjectStatus>): void {
+  localStorage.setItem(STATUS_KEY(), JSON.stringify(data));
+}
+
 function StarRating({ count }: { count: number }) {
   return (
     <div className="flex items-center gap-0.5">
@@ -295,11 +338,25 @@ function StarRating({ count }: { count: number }) {
 
 export default function ProjectIdeas() {
   const [activeCategory, setActiveCategory] = useState("All");
+  const [statuses, setStatuses] =
+    useState<Record<string, ProjectStatus>>(loadStatuses);
 
   const filtered =
     activeCategory === "All"
       ? PROJECTS
       : PROJECTS.filter((p) => p.difficulty === activeCategory);
+  const completedCount = Object.values(statuses).filter(
+    (s) => s === "Completed",
+  ).length;
+
+  const setStatus = (project: ProjectIdea, status: ProjectStatus) => {
+    const updated = { ...statuses, [project.id]: status };
+    setStatuses(updated);
+    saveStatuses(updated);
+    if (status === "Completed") {
+      addNotification(`🚀 Project completed: ${project.name}`);
+    }
+  };
 
   return (
     <AppShell
@@ -307,17 +364,31 @@ export default function ProjectIdeas() {
       subtitle="Build portfolio-worthy projects"
     >
       <div className="max-w-7xl mx-auto" data-ocid="projects.page">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white mb-1">
-            CSE Project Ideas Hub
-          </h1>
-          <p className="text-white/40 text-sm">
-            15 carefully curated projects from beginner to advanced — build real
-            skills, not toy apps
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-1">
+              CSE Project Ideas Hub
+            </h1>
+            <p className="text-white/40 text-sm">
+              15 carefully curated projects from beginner to advanced
+            </p>
+          </div>
+          {completedCount > 0 && (
+            <div
+              className="flex items-center gap-2 px-4 py-2 rounded-full flex-shrink-0"
+              style={{
+                background: "rgba(57,217,138,0.15)",
+                border: "1px solid rgba(57,217,138,0.3)",
+              }}
+            >
+              <CheckCircle2 size={15} className="text-green-400" />
+              <span className="text-green-400 font-semibold text-sm">
+                Completed: {completedCount}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Category Filters */}
         <div
           className="flex flex-wrap gap-2 mb-6"
           data-ocid="projects.filter.tab"
@@ -338,10 +409,11 @@ export default function ProjectIdeas() {
           ))}
         </div>
 
-        {/* Projects Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((project, i) => {
             const diffConfig = DIFFICULTY_CONFIG[project.difficulty];
+            const status: ProjectStatus = statuses[project.id] ?? "Not Started";
+            const statusCfg = STATUS_CONFIG[status];
             const searchQuery = encodeURIComponent(
               `${project.name} ${project.technologies[0]} tutorial GitHub`,
             );
@@ -356,23 +428,34 @@ export default function ProjectIdeas() {
                   <h3 className="text-white font-bold text-base">
                     {project.name}
                   </h3>
-                  <span
-                    className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0"
-                    style={{
-                      background: diffConfig.bg,
-                      border: `1px solid ${diffConfig.border}`,
-                      color: diffConfig.color,
-                    }}
-                  >
-                    {project.difficulty}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{
+                        background: statusCfg.bg,
+                        border: `1px solid ${statusCfg.border}`,
+                        color: statusCfg.color,
+                      }}
+                    >
+                      {status}
+                    </span>
+                    <span
+                      className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                      style={{
+                        background: diffConfig.bg,
+                        border: `1px solid ${diffConfig.border}`,
+                        color: diffConfig.color,
+                      }}
+                    >
+                      {project.difficulty}
+                    </span>
+                  </div>
                 </div>
 
                 <p className="text-white/50 text-sm leading-relaxed">
                   {project.description}
                 </p>
 
-                {/* Technologies */}
                 <div className="flex flex-wrap gap-1.5">
                   {project.technologies.map((tech) => (
                     <span key={tech} className="skill-chip text-xs">
@@ -381,7 +464,6 @@ export default function ProjectIdeas() {
                   ))}
                 </div>
 
-                {/* Features */}
                 <div>
                   <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-1.5">
                     Key Features
@@ -401,7 +483,6 @@ export default function ProjectIdeas() {
                   </ul>
                 </div>
 
-                {/* Resume Worth */}
                 <div className="flex items-center gap-2">
                   <p className="text-white/40 text-xs">Resume Worth:</p>
                   <StarRating count={project.resumeWorth} />
@@ -410,15 +491,55 @@ export default function ProjectIdeas() {
                   </span>
                 </div>
 
-                <a
-                  href={`https://www.google.com/search?q=${searchQuery}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-auto btn-primary text-xs py-2 px-4 flex items-center justify-center gap-1.5"
-                  data-ocid={`projects.start.${i + 1}`}
-                >
-                  <Code2 size={13} /> Start Building <ExternalLink size={12} />
-                </a>
+                {/* Status Actions */}
+                <div className="flex gap-1.5">
+                  {status === "Not Started" && (
+                    <button
+                      type="button"
+                      onClick={() => setStatus(project, "In Progress")}
+                      className="flex-1 btn-primary text-xs py-2 flex items-center justify-center gap-1"
+                      data-ocid={`projects.start_button.${i + 1}`}
+                    >
+                      <PlayCircle size={13} /> Start Project
+                    </button>
+                  )}
+                  {status === "In Progress" && (
+                    <button
+                      type="button"
+                      onClick={() => setStatus(project, "Completed")}
+                      className="flex-1 text-xs py-2 rounded-xl font-semibold flex items-center justify-center gap-1 transition-all"
+                      style={{
+                        background: "rgba(57,217,138,0.2)",
+                        border: "1px solid rgba(57,217,138,0.4)",
+                        color: "#39D98A",
+                      }}
+                      data-ocid={`projects.complete_button.${i + 1}`}
+                    >
+                      <CheckCircle2 size={13} /> Mark Completed
+                    </button>
+                  )}
+                  {status === "Completed" && (
+                    <div
+                      className="flex-1 text-xs py-2 rounded-xl font-semibold flex items-center justify-center gap-1"
+                      style={{
+                        background: "rgba(57,217,138,0.15)",
+                        border: "1px solid rgba(57,217,138,0.3)",
+                        color: "#39D98A",
+                      }}
+                    >
+                      <CheckCircle2 size={13} /> 🏅 Completed!
+                    </div>
+                  )}
+                  <a
+                    href={`https://www.google.com/search?q=${searchQuery}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-secondary text-xs py-2 px-3 flex items-center gap-1 flex-shrink-0"
+                    data-ocid={`projects.search.${i + 1}`}
+                  >
+                    <Code2 size={12} /> Resources <ExternalLink size={11} />
+                  </a>
+                </div>
               </div>
             );
           })}

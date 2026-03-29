@@ -16,10 +16,14 @@ import {
   LogOut,
   Map as MapIcon,
   Menu,
+  MessageSquare,
+  Mic,
   Moon,
   Search,
   Sun,
   Target,
+  TrendingUp,
+  User,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -42,6 +46,12 @@ const navItems = [
     label: "Dashboard",
     icon: LayoutDashboard,
     ocid: "nav.dashboard.link",
+  },
+  {
+    path: "/profile",
+    label: "My Profile",
+    icon: User,
+    ocid: "nav.profile.link",
   },
   {
     path: "/resume-builder",
@@ -68,6 +78,12 @@ const navItems = [
     ocid: "nav.skill_gap.link",
   },
   {
+    path: "/skill-tracker",
+    label: "Skill Tracker",
+    icon: TrendingUp,
+    ocid: "nav.skill_tracker.link",
+  },
+  {
     path: "/learning-resources",
     label: "Learning Resources",
     icon: BookOpen,
@@ -90,6 +106,18 @@ const navItems = [
     label: "Mock Tests",
     icon: ClipboardCheck,
     ocid: "nav.mock_tests.link",
+  },
+  {
+    path: "/interview-prep",
+    label: "Interview Prep",
+    icon: MessageSquare,
+    ocid: "nav.interview_prep.link",
+  },
+  {
+    path: "/mock-interview",
+    label: "Mock Interview",
+    icon: Mic,
+    ocid: "nav.mock_interview.link",
   },
   {
     path: "/career-roadmap",
@@ -141,15 +169,15 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
     setNotifications(getNotifications());
     setUnreadCount(getUnreadCount());
     if (s > 0) {
-      const streakKey = `streak_notif_${s}`;
+      const streakKey = `streak_notif_${auth?.phone ?? "guest"}_${s}`;
       if (!sessionStorage.getItem(streakKey)) {
         sessionStorage.setItem(streakKey, "1");
         addNotification(`🔥 Day ${s} streak! Keep up the great work!`);
       }
     }
-    // Only add welcome notification once per session
-    if (!sessionStorage.getItem("welcome_notif_shown")) {
-      sessionStorage.setItem("welcome_notif_shown", "1");
+    const welcomeKey = `welcome_notif_shown_${auth?.phone ?? "guest"}`;
+    if (!sessionStorage.getItem(welcomeKey)) {
+      sessionStorage.setItem(welcomeKey, "1");
       addNotification(
         `👋 Welcome back, ${auth?.name ?? "User"}! Your career journey continues.`,
       );
@@ -158,7 +186,6 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
     setUnreadCount(getUnreadCount());
   }, []);
 
-  // Close notif dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
@@ -191,7 +218,6 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
       className={`flex h-screen overflow-hidden ${darkMode ? "dark-mode" : "light-mode"}`}
       style={{ backgroundColor: darkMode ? "#060B2A" : "#f0f2ff" }}
     >
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 lg:hidden"
@@ -261,7 +287,7 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
           })}
         </nav>
 
-        {/* Streak + User section */}
+        {/* Streak + User */}
         <div className="px-4 py-4 border-t border-white/6 space-y-3">
           {streak > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20">
@@ -321,7 +347,6 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
             <Menu size={20} />
           </button>
 
-          {/* Search */}
           <div className="flex-1 max-w-md hidden sm:block">
             <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2">
               <Search size={15} className="text-white/40" />
@@ -345,8 +370,6 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
                 )}
               </div>
             )}
-
-            {/* Dark mode toggle */}
             <button
               type="button"
               onClick={handleDarkToggle}
@@ -357,8 +380,7 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
               {darkMode ? <Sun size={15} /> : <Moon size={15} />}
             </button>
 
-            {/* Notifications */}
-            <div className="relative" ref={notifRef}>
+            <div className="relative z-[9999]" ref={notifRef}>
               <button
                 type="button"
                 onClick={() => setNotifOpen((v) => !v)}
@@ -372,10 +394,9 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
                   </span>
                 )}
               </button>
-
               {notifOpen && (
                 <div
-                  className="absolute right-0 top-11 w-80 glass-card shadow-2xl z-50 overflow-hidden"
+                  className="absolute right-0 top-11 w-80 glass-card shadow-2xl z-[9999] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
                   data-ocid="nav.notifications.popover"
                 >
                   <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
@@ -416,19 +437,19 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
               )}
             </div>
 
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs cursor-pointer"
+            <Link
+              to="/profile"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs cursor-pointer hover:opacity-90 transition-opacity"
               style={{
                 background: "linear-gradient(135deg, #7C5CFF, #35D0C7)",
               }}
               data-ocid="nav.avatar.button"
             >
               {initials}
-            </div>
+            </Link>
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 overflow-y-auto p-5 md:p-6">{children}</main>
       </div>
     </div>

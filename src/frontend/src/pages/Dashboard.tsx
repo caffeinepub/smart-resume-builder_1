@@ -12,8 +12,11 @@ import {
   Flame,
   GraduationCap,
   Map as MapIcon,
+  MessageSquare,
+  Mic,
   Target,
   TrendingUp,
+  User,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -33,6 +36,7 @@ import {
 } from "recharts";
 import AppShell from "../components/AppShell";
 import { getScoreColor, getScoreLabel } from "../utils/atsEngine";
+import { getUserKey } from "../utils/auth";
 import { getStreak } from "../utils/extras";
 import { ROLES, getRoleEligibility } from "../utils/roleData";
 import {
@@ -122,6 +126,38 @@ const FEATURE_CARDS = [
     icon: BarChart2,
     color: "#A855F7",
     bg: "rgba(168,85,247,0.15)",
+  },
+  {
+    title: "My Profile",
+    desc: "Edit your career profile",
+    path: "/profile",
+    icon: User,
+    color: "#EC4899",
+    bg: "rgba(236,72,153,0.15)",
+  },
+  {
+    title: "Skill Tracker",
+    desc: "Track learning progress",
+    path: "/skill-tracker",
+    icon: TrendingUp,
+    color: "#39D98A",
+    bg: "rgba(57,217,138,0.15)",
+  },
+  {
+    title: "Interview Prep",
+    desc: "Prepare for interviews",
+    path: "/interview-prep",
+    icon: MessageSquare,
+    color: "#35D0C7",
+    bg: "rgba(53,208,199,0.15)",
+  },
+  {
+    title: "Mock Interview",
+    desc: "Simulated interview mode",
+    path: "/mock-interview",
+    icon: Mic,
+    color: "#F59E0B",
+    bg: "rgba(245,158,11,0.15)",
   },
 ];
 
@@ -216,8 +252,52 @@ export default function Dashboard() {
 
   const certCount = (() => {
     try {
-      const bm = localStorage.getItem("smartresume_bookmarks");
+      const bm = localStorage.getItem(getUserKey("smartresume_bookmarks"));
       return bm ? (JSON.parse(bm) as string[]).length : 0;
+    } catch {
+      return 0;
+    }
+  })();
+
+  const certsCompleted = (() => {
+    try {
+      const raw = localStorage.getItem(
+        getUserKey("smartresume_cert_completions"),
+      );
+      return raw ? (JSON.parse(raw) as string[]).length : 0;
+    } catch {
+      return 0;
+    }
+  })();
+
+  const skillTrackerData = (() => {
+    try {
+      const raw = localStorage.getItem(getUserKey("smartresume_skill_tracker"));
+      if (!raw)
+        return {
+          total: 0,
+          completed: 0,
+          items: [] as Array<{ name: string; status: string }>,
+        };
+      const items = JSON.parse(raw) as Array<{ name: string; status: string }>;
+      return {
+        total: items.length,
+        completed: items.filter((s) => s.status === "Completed").length,
+        items: items.slice(0, 3),
+      };
+    } catch {
+      return { total: 0, completed: 0, items: [] };
+    }
+  })();
+
+  const completedProjects = (() => {
+    try {
+      const raw = localStorage.getItem(
+        getUserKey("smartresume_project_status"),
+      );
+      if (!raw) return 0;
+      const obj = JSON.parse(raw) as Record<string, string>;
+      return Object.values(obj).filter((s) => s === "Completed").length;
     } catch {
       return 0;
     }
@@ -227,7 +307,9 @@ export default function Dashboard() {
     completionPct * 0.3 +
       atsScore * 0.3 +
       Math.min(certCount * 5, 20) +
-      readiness * 0.2,
+      readiness * 0.2 +
+      Math.min(certsCompleted * 4, 12) +
+      Math.min(completedProjects * 5, 15),
   );
 
   // Only add a completion notification if they have actual resume data
@@ -323,6 +405,25 @@ export default function Dashboard() {
       sub: "in resume",
       num: (resume?.projects.length ?? 0) * 25,
     },
+    {
+      label: "Skills Tracked",
+      value: `${skillTrackerData.total}`,
+      icon: TrendingUp,
+      color: "#39D98A",
+      sub: `${skillTrackerData.completed} completed`,
+      num:
+        skillTrackerData.total > 0
+          ? (skillTrackerData.completed / skillTrackerData.total) * 100
+          : 0,
+    },
+    {
+      label: "Certs Completed",
+      value: `${certsCompleted}`,
+      icon: GraduationCap,
+      color: "#35D0C7",
+      sub: "finished courses",
+      num: Math.min(certsCompleted * 10, 100),
+    },
   ];
 
   return (
@@ -385,7 +486,7 @@ export default function Dashboard() {
         {hasData ? (
           <>
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
               {kpis.map((kpi, i) => {
                 const Icon = kpi.icon;
                 return (
@@ -712,6 +813,68 @@ export default function Dashboard() {
                 </Link>
               </div>
             </div>
+
+            {/* Skill Progress Summary */}
+            {skillTrackerData.total > 0 && (
+              <div
+                className="glass-card p-6"
+                data-ocid="dashboard.skill_progress.panel"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="section-heading">Skill Progress</h3>
+                  <Link
+                    to="/skill-tracker"
+                    className="text-purple-400 text-xs flex items-center gap-1 hover:text-purple-300"
+                    data-ocid="dashboard.skill_tracker.link"
+                  >
+                    View All <ArrowRight size={12} />
+                  </Link>
+                </div>
+                <div className="space-y-3">
+                  {skillTrackerData.items.map((skill, i) => {
+                    const pct =
+                      skill.status === "Completed"
+                        ? 100
+                        : skill.status === "Practicing"
+                          ? 66
+                          : 33;
+                    const color =
+                      skill.status === "Completed"
+                        ? "#39D98A"
+                        : skill.status === "Practicing"
+                          ? "#4B8BFF"
+                          : "#F59E0B";
+                    return (
+                      <div
+                        key={`${skill.name}-${i}`}
+                        data-ocid={`dashboard.skill_progress.item.${i + 1}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-white text-sm font-medium">
+                            {skill.name}
+                          </span>
+                          <span
+                            className="text-xs font-semibold"
+                            style={{ color }}
+                          >
+                            {skill.status}
+                          </span>
+                        </div>
+                        <div className="progress-bar-track">
+                          <div
+                            className="progress-bar-fill transition-all duration-700"
+                            style={{
+                              width: `${pct}%`,
+                              background: `linear-gradient(90deg, ${color}60, ${color})`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Resume Card */}
             {resume && (

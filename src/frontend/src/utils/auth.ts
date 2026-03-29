@@ -42,3 +42,12 @@ export function registerUser(phone: string, name: string): void {
 export function isPhoneRegistered(phone: string): boolean {
   return phone in getRegisteredUsers();
 }
+
+export function getCurrentUserPhone(): string {
+  return getStoredAuth()?.phone ?? "";
+}
+
+export function getUserKey(baseKey: string): string {
+  const phone = getCurrentUserPhone();
+  return phone ? `${baseKey}_${phone}` : baseKey;
+}

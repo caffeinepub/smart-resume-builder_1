@@ -14,15 +14,19 @@ import CareerRoadmap from "./pages/CareerRoadmap";
 import Certifications from "./pages/Certifications";
 import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
+import InterviewPrep from "./pages/InterviewPrep";
 import Jobs from "./pages/Jobs";
 import LearningResources from "./pages/LearningResources";
 import LoginPage from "./pages/LoginPage";
+import MockInterview from "./pages/MockInterview";
 import MockTests from "./pages/MockTests";
+import ProfilePage from "./pages/ProfilePage";
 import ProjectIdeas from "./pages/ProjectIdeas";
 import RegisterPage from "./pages/RegisterPage";
 import ResumeBuilder from "./pages/ResumeBuilder";
 import RoleEligibility from "./pages/RoleEligibility";
 import SkillGap from "./pages/SkillGap";
+import SkillTracker from "./pages/SkillTracker";
 import { initDarkMode } from "./utils/extras";
 
 const rootRoute = createRootRoute({
@@ -49,104 +53,87 @@ const registerRoute = createRoute({
   path: "/register",
   component: RegisterPage,
 });
+
+const guard = (C: React.ComponentType) => () => (
+  <AuthGuard>
+    <C />
+  </AuthGuard>
+);
+
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboard",
-  component: () => (
-    <AuthGuard>
-      <Dashboard />
-    </AuthGuard>
-  ),
+  component: guard(Dashboard),
 });
 const resumeBuilderRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/resume-builder",
-  component: () => (
-    <AuthGuard>
-      <ResumeBuilder />
-    </AuthGuard>
-  ),
+  component: guard(ResumeBuilder),
 });
 const atsAnalyzerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/ats-analyzer",
-  component: () => (
-    <AuthGuard>
-      <ATSAnalyzer />
-    </AuthGuard>
-  ),
+  component: guard(ATSAnalyzer),
 });
 const roleEligibilityRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/role-eligibility",
-  component: () => (
-    <AuthGuard>
-      <RoleEligibility />
-    </AuthGuard>
-  ),
+  component: guard(RoleEligibility),
 });
 const skillGapRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/skill-gap",
-  component: () => (
-    <AuthGuard>
-      <SkillGap />
-    </AuthGuard>
-  ),
+  component: guard(SkillGap),
 });
 const learningResourcesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/learning-resources",
-  component: () => (
-    <AuthGuard>
-      <LearningResources />
-    </AuthGuard>
-  ),
+  component: guard(LearningResources),
 });
 const careerRoadmapRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/career-roadmap",
-  component: () => (
-    <AuthGuard>
-      <CareerRoadmap />
-    </AuthGuard>
-  ),
+  component: guard(CareerRoadmap),
 });
 const jobsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/jobs",
-  component: () => (
-    <AuthGuard>
-      <Jobs />
-    </AuthGuard>
-  ),
+  component: guard(Jobs),
 });
 const certificationsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/certifications",
-  component: () => (
-    <AuthGuard>
-      <Certifications />
-    </AuthGuard>
-  ),
+  component: guard(Certifications),
 });
 const projectIdeasRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/projects",
-  component: () => (
-    <AuthGuard>
-      <ProjectIdeas />
-    </AuthGuard>
-  ),
+  component: guard(ProjectIdeas),
 });
 const mockTestsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/mock-tests",
-  component: () => (
-    <AuthGuard>
-      <MockTests />
-    </AuthGuard>
-  ),
+  component: guard(MockTests),
+});
+const skillTrackerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/skill-tracker",
+  component: guard(SkillTracker),
+});
+const interviewPrepRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/interview-prep",
+  component: guard(InterviewPrep),
+});
+const mockInterviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/mock-interview",
+  component: guard(MockInterview),
+});
+const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/profile",
+  component: guard(ProfilePage),
 });
 
 const routeTree = rootRoute.addChildren([
@@ -164,6 +151,10 @@ const routeTree = rootRoute.addChildren([
   certificationsRoute,
   projectIdeasRoute,
   mockTestsRoute,
+  skillTrackerRoute,
+  interviewPrepRoute,
+  mockInterviewRoute,
+  profileRoute,
 ]);
 
 const router = createRouter({ routeTree });
@@ -176,7 +167,6 @@ declare module "@tanstack/react-router" {
 
 function AppInit() {
   useEffect(() => {
-    // Do NOT auto-initialize sample data — users must create their own data
     initDarkMode();
   }, []);
   return null;

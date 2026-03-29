@@ -18,6 +18,9 @@ const QUICK_CHIPS = [
   "Best free certifications",
   "Interview preparation",
   "Career roadmap",
+  "Skill tracker help",
+  "Mock interview tips",
+  "View my profile",
 ];
 
 function getAIResponse(input: string): string {
@@ -59,6 +62,18 @@ function getAIResponse(input: string): string {
   }
   if (/project|portfolio|build|github|showcase/.test(q)) {
     return "🚀 Strong Portfolio Projects for CSE:\n• Full-stack Web App (React + Node.js + DB)\n• REST API with Authentication\n• ML/AI Model (image classification, chatbot)\n• Mobile App (React Native / Flutter)\n• Open Source contributions on GitHub\n\nHosting: Vercel, Netlify, Render (all free)\nAlways add a README and live demo link!";
+  }
+  if (/skill.?tracker|track.?skill/.test(q)) {
+    return "\ud83d\udcca Skill Progress Tracker:\nGo to Skill Tracker in the sidebar to:\n\u2022 Add any skill you're learning\n\u2022 Set status: Learning (33%) / Practicing (66%) / Completed (100%)\n\u2022 See visual progress bars for each skill\n\u2022 Get notified when you complete a skill!";
+  }
+  if (/mock.?interview|practice.?interview/.test(q)) {
+    return "\ud83c\udfa4 Mock Interview Mode:\nGo to Mock Interview (/mock-interview):\n\u2022 10 mixed HR + Technical questions\n\u2022 60-second timer per question\n\u2022 Type answer, then see model answer & tips\n\u2022 Summary with score at the end\n\nRegular practice = better confidence!";
+  }
+  if (/\bmy profile\b|\bprofile page\b|view.*profile/.test(q)) {
+    return "\ud83d\udc64 Your Profile Page (/profile):\n\u2022 Set Full Name, Mobile, Career Goal\n\u2022 Add your LinkedIn URL\n\u2022 Write your About Me section\n\u2022 See stats: Skills, Projects, Certifications\n\nYour profile syncs with your Resume Builder automatically!";
+  }
+  if (/interview.?prep|preparation.?hub/.test(q)) {
+    return "\ud83c\udfaf Interview Prep Hub (/interview-prep):\n4 Question Banks:\n\u2022 HR Questions - Tell me about yourself...\n\u2022 Technical - OOP, REST APIs, Docker...\n\u2022 Coding - Linked list, binary search...\n\u2022 System Design - URL shortener, CAP theorem...\n\nUse Generate Random Question for surprise practice!";
   }
   if (/roadmap|path|career|guide|step|kahan se shuru/.test(q)) {
     return "🗺️ Career Roadmap for CSE Students:\n\n1️⃣ Learn Fundamentals – Programming, DSA, CS basics\n2️⃣ Pick a Domain – Web Dev, AI/ML, Cybersecurity, etc.\n3️⃣ Build 3–5 Projects – Show real-world skills\n4️⃣ Earn Certifications – Google, AWS, Microsoft\n5️⃣ Create Resume – ATS-friendly, 1 page for freshers\n6️⃣ Practice Interviews – LeetCode, mock interviews\n7️⃣ Apply for Jobs – LinkedIn, Naukri, Internshala";

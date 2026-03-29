@@ -11,6 +11,8 @@ import {
   FileText,
   GraduationCap,
   LayoutDashboard,
+  MessageSquare,
+  Mic,
   Star,
   Target,
   TrendingUp,
@@ -91,6 +93,22 @@ const features = [
     bg: "rgba(249,115,22,0.12)",
   },
   {
+    icon: MessageSquare,
+    title: "Interview Prep",
+    description: "HR, Technical, Coding & System Design question banks",
+    path: "/interview-prep",
+    color: "#35D0C7",
+    bg: "rgba(53,208,199,0.12)",
+  },
+  {
+    icon: Mic,
+    title: "Mock Interview",
+    description: "Simulated interview with timer and model answers",
+    path: "/mock-interview",
+    color: "#A855F7",
+    bg: "rgba(168,85,247,0.12)",
+  },
+  {
     icon: Briefcase,
     title: "Career Roadmap",
     description: "Step-by-step roadmaps from student to hired professional",
@@ -154,25 +172,90 @@ const steps = [
   },
 ];
 
+const pipelineSteps = [
+  {
+    icon: FileText,
+    label: "Resume",
+    desc: "ATS-optimized professional resume",
+    color: "#7C5CFF",
+  },
+  {
+    icon: BookOpen,
+    label: "Skills",
+    desc: "Learn in-demand tech skills",
+    color: "#35D0C7",
+  },
+  {
+    icon: Code2,
+    label: "Projects",
+    desc: "Build portfolio projects",
+    color: "#39D98A",
+  },
+  {
+    icon: GraduationCap,
+    label: "Certify",
+    desc: "Earn industry certificates",
+    color: "#F59E0B",
+  },
+  {
+    icon: Briefcase,
+    label: "Get Hired",
+    desc: "Land your dream job",
+    color: "#EC4899",
+  },
+];
+
+const valueProps = [
+  {
+    emoji: "\u{1F916}",
+    title: "AI Career Assistant",
+    desc: "Get instant career guidance, resume tips, and skill recommendations from our built-in AI",
+  },
+  {
+    emoji: "\u{1F4CA}",
+    title: "Real Analytics",
+    desc: "Track your ATS score, career readiness, skill progress, and certification count in one dashboard",
+  },
+  {
+    emoji: "\u{1F3C6}",
+    title: "Free Everything",
+    desc: "200+ free courses from Google, AWS, Microsoft, IBM, Coursera - zero paid plans needed",
+  },
+  {
+    emoji: "\u{1F3AF}",
+    title: "Interview Ready",
+    desc: "HR + Technical + Coding + System Design question bank with mock interview mode and timer",
+  },
+  {
+    emoji: "\u{1F525}",
+    title: "Streak System",
+    desc: "Daily learning streaks keep you motivated and track your consistency over time",
+  },
+  {
+    emoji: "\u{1F680}",
+    title: "Project Builder",
+    desc: "15 curated CSE projects with guides, tech stack, and resources to build real portfolio work",
+  },
+];
+
 export default function Home() {
   return (
     <div
       className="min-h-screen"
       style={{
-        backgroundColor: "#060B2A",
-        backgroundImage:
-          "radial-gradient(ellipse at 15% 40%, rgba(124,92,255,0.2) 0%, transparent 55%), radial-gradient(ellipse at 85% 15%, rgba(53,208,199,0.15) 0%, transparent 50%)",
+        background:
+          "linear-gradient(135deg, #060B2A 0%, #0B1236 50%, #060B2A 100%)",
       }}
     >
       {/* Navbar */}
       <nav
-        className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/6"
+        className="flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/6 sticky top-0 z-40"
         style={{
-          background: "rgba(6, 11, 42, 0.85)",
-          backdropFilter: "blur(16px)",
+          background: "rgba(6,11,42,0.85)",
+          backdropFilter: "blur(12px)",
         }}
       >
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center"
             style={{ background: "linear-gradient(135deg, #7C5CFF, #4B8BFF)" }}
@@ -180,26 +263,26 @@ export default function Home() {
             <Brain size={18} className="text-white" />
           </div>
           <div>
-            <span className="text-white font-extrabold text-base tracking-tight">
+            <span className="text-white font-extrabold text-sm tracking-tight">
               SMARTRESUME AI
             </span>
-            <p className="text-white/40 text-[9px] uppercase tracking-widest font-medium">
-              Career Builder
+            <p className="text-white/40 text-[9px] font-medium uppercase tracking-wider">
+              Career Ecosystem
             </p>
           </div>
         </div>
         <div className="hidden md:flex items-center gap-6 text-sm text-white/60">
-          <a href="#features" className="hover:text-white transition-colors">
-            Features
-          </a>
           <a
             href="#how-it-works"
             className="hover:text-white transition-colors"
           >
             How It Works
           </a>
+          <a href="#features" className="hover:text-white transition-colors">
+            Features
+          </a>
           <a href="#stats" className="hover:text-white transition-colors">
-            About
+            Stats
           </a>
         </div>
         <div className="flex items-center gap-3">
@@ -208,7 +291,7 @@ export default function Home() {
             className="btn-secondary text-sm py-2 px-4"
             data-ocid="home.login.button"
           >
-            Sign In
+            Login
           </Link>
           <Link
             to="/register"
@@ -226,54 +309,46 @@ export default function Home() {
           className="absolute inset-0 -z-10"
           style={{
             background:
-              "url('/assets/generated/hero-bg.dim_1200x600.jpg') center/cover",
+              "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,92,255,0.15) 0%, transparent 70%)",
           }}
         />
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-[#060B2A]/60 to-[#060B2A]" />
-
         <div className="animate-fade-in-up max-w-4xl mx-auto">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium mb-6">
-            <Brain size={14} />
-            AI-Powered Career Platform for Students
+            <LayoutDashboard size={14} /> Career Ecosystem Platform
           </div>
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-6 leading-tight">
-            Build Your <span className="gradient-text">Dream Career</span>
+          <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-5">
+            Build Your Career
             <br />
-            with AI-Powered Tools
+            <span
+              style={{
+                background: "linear-gradient(90deg, #7C5CFF, #35D0C7)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              Resume to Job Offer
+            </span>
           </h1>
-          <p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-4 leading-relaxed">
-            SMARTRESUME AI guides every step — from your first resume to landing
-            your dream job. Resume builder, ATS analyzer, skill learning,
-            certifications, and more.
+          <p className="text-white/60 text-lg max-w-2xl mx-auto mb-8">
+            The only platform combining Resume Builder, ATS Analyzer, Skill
+            Tracker, Certification Hub, Interview Prep, and AI Career Assistant
+            in one complete ecosystem.
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-8">
             <Link
               to="/register"
-              className="btn-primary flex items-center gap-2"
-              data-ocid="home.hero.register.button"
+              className="btn-primary flex items-center gap-2 py-3 px-6 text-base"
+              data-ocid="home.hero.primary.button"
             >
-              <Brain size={17} /> Get Started Free
+              Start Free Today <ArrowRight size={17} />
             </Link>
             <Link
-              to="/resume-builder"
-              className="btn-secondary flex items-center gap-2"
-              data-ocid="home.hero.build_resume.button"
+              to="/login"
+              className="btn-secondary flex items-center gap-2 py-3 px-6 text-base"
+              data-ocid="home.hero.secondary.button"
             >
-              <FileText size={17} /> Build Resume
-            </Link>
-            <Link
-              to="/ats-analyzer"
-              className="btn-secondary flex items-center gap-2"
-              data-ocid="home.hero.analyze.button"
-            >
-              <Target size={17} /> Analyze Resume
-            </Link>
-            <Link
-              to="/dashboard"
-              className="btn-secondary flex items-center gap-2"
-              data-ocid="home.hero.dashboard.button"
-            >
-              <LayoutDashboard size={17} /> Dashboard
+              Sign In
             </Link>
           </div>
         </div>
@@ -288,9 +363,10 @@ export default function Home() {
               <div
                 // biome-ignore lint/suspicious/noArrayIndexKey: stable index
                 key={i}
-                className={`glass-card p-6 text-center animate-fade-in-up stagger-${i + 1}`}
+                className="glass-card p-6 text-center"
+                data-ocid={`home.stat.item.${i + 1}`}
               >
-                <Icon size={24} className="text-purple-400 mx-auto mb-3" />
+                <Icon size={24} className="mx-auto mb-2 text-purple-400" />
                 <div className="text-3xl font-extrabold text-white mb-1">
                   {stat.value}
                 </div>
@@ -305,11 +381,11 @@ export default function Home() {
       <section id="how-it-works" className="px-6 md:px-10 pb-20">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Your Career Journey in 5 Steps
+            <h2 className="text-3xl font-extrabold text-white mb-3">
+              How It Works
             </h2>
-            <p className="text-white/50 text-lg">
-              From zero to hired — SMARTRESUME AI guides every step of the way
+            <p className="text-white/50 max-w-xl mx-auto">
+              Five steps from student to hired professional
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -317,28 +393,30 @@ export default function Home() {
               const Icon = s.icon;
               return (
                 <div
-                  key={s.step}
-                  className={`glass-card p-5 text-center relative animate-fade-in-up stagger-${i + 1}`}
+                  // biome-ignore lint/suspicious/noArrayIndexKey: stable index
+                  key={i}
+                  className="glass-card p-5 text-center relative overflow-visible"
+                  data-ocid={`home.step.item.${i + 1}`}
                 >
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-extrabold text-white"
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
                     style={{
-                      background: `linear-gradient(135deg, ${s.color}, ${s.color}88)`,
+                      background: `${s.color}20`,
+                      border: `1px solid ${s.color}40`,
                     }}
+                  >
+                    <Icon size={22} style={{ color: s.color }} />
+                  </div>
+                  <div
+                    className="text-2xl font-extrabold mb-1"
+                    style={{ color: s.color }}
                   >
                     {s.step}
                   </div>
-                  <Icon
-                    size={20}
-                    className="mx-auto mb-2"
-                    style={{ color: s.color }}
-                  />
-                  <h3 className="text-white font-bold text-sm mb-2">
+                  <p className="text-white font-semibold text-sm mb-1">
                     {s.title}
-                  </h3>
-                  <p className="text-white/50 text-xs leading-relaxed">
-                    {s.desc}
                   </p>
+                  <p className="text-white/40 text-xs">{s.desc}</p>
                   {i < steps.length - 1 && (
                     <div className="hidden lg:block absolute -right-2 top-1/2 -translate-y-1/2 z-10">
                       <ArrowRight size={16} className="text-white/20" />
@@ -351,16 +429,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Features Grid */}
       <section id="features" className="px-6 md:px-10 pb-24">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              10 Powerful Career Modules
+            <h2 className="text-3xl font-extrabold text-white mb-3">
+              Everything You Need
             </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
-              Everything you need to go from student to hired professional, all
-              in one platform.
+            <p className="text-white/50 max-w-xl mx-auto">
+              One platform for your complete career preparation journey
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -370,34 +447,133 @@ export default function Home() {
                 <Link
                   key={f.path + f.title}
                   to={f.path}
+                  className="glass-card-hover p-5 flex flex-col gap-3"
                   data-ocid={`home.feature.item.${i + 1}`}
-                  className={`glass-card-hover p-5 group animate-fade-in-up stagger-${(i % 6) + 1}`}
                 >
                   <div
-                    className="w-11 h-11 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110"
+                    className="w-11 h-11 rounded-xl flex items-center justify-center"
                     style={{ background: f.bg }}
                   >
                     <Icon size={20} style={{ color: f.color }} />
                   </div>
-                  <h3 className="text-white font-semibold text-sm mb-1.5">
-                    {f.title}
-                  </h3>
-                  <p className="text-white/50 text-xs leading-relaxed mb-3">
-                    {f.description}
-                  </p>
+                  <div>
+                    <p className="text-white font-semibold text-sm mb-1">
+                      {f.title}
+                    </p>
+                    <p className="text-white/40 text-xs leading-relaxed">
+                      {f.description}
+                    </p>
+                  </div>
                   <div
-                    className="flex items-center gap-1 text-xs font-medium transition-colors"
+                    className="mt-auto flex items-center gap-1 text-xs"
                     style={{ color: f.color }}
                   >
-                    Explore{" "}
-                    <ArrowRight
-                      size={12}
-                      className="group-hover:translate-x-1 transition-transform"
-                    />
+                    Explore <ArrowRight size={11} />
                   </div>
                 </Link>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* Why SmartResume AI? */}
+      <section className="px-6 md:px-10 pb-20">
+        <div
+          className="max-w-5xl mx-auto rounded-3xl overflow-hidden"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(124,92,255,0.12) 0%, rgba(53,208,199,0.08) 50%, rgba(124,92,255,0.12) 100%)",
+            border: "1px solid rgba(124,92,255,0.25)",
+          }}
+        >
+          <div className="p-8 md:p-12">
+            <div className="text-center mb-10">
+              <div
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-4"
+                style={{
+                  background: "rgba(124,92,255,0.15)",
+                  border: "1px solid rgba(124,92,255,0.3)",
+                  color: "#A78BFA",
+                }}
+              >
+                <Brain size={14} /> Why SmartResume AI?
+              </div>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-3">
+                The Only Platform That Takes You From
+              </h2>
+              <p
+                className="text-xl font-bold"
+                style={{
+                  background: "linear-gradient(90deg, #7C5CFF, #35D0C7)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                Student to Hired Professional
+              </p>
+              <p className="text-white/50 mt-3 max-w-2xl mx-auto">
+                LinkedIn + Internshala + Coursera + Resume AI combined in one
+                complete career ecosystem. Not a college project — a funded
+                startup MVP.
+              </p>
+            </div>
+
+            {/* Pipeline */}
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-10">
+              {pipelineSteps.map((step, i) => {
+                const Icon = step.icon;
+                return (
+                  <div
+                    key={step.label}
+                    className="flex flex-col items-center text-center relative"
+                  >
+                    {i < 4 && (
+                      <div
+                        className="hidden sm:block absolute top-5 left-[60%] w-full h-0.5 z-0"
+                        style={{
+                          background:
+                            "linear-gradient(90deg, rgba(124,92,255,0.5), transparent)",
+                        }}
+                      />
+                    )}
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3 relative z-10"
+                      style={{
+                        background: `${step.color}20`,
+                        border: `1px solid ${step.color}40`,
+                      }}
+                    >
+                      <Icon size={22} style={{ color: step.color }} />
+                    </div>
+                    <p className="text-white font-bold text-sm">{step.label}</p>
+                    <p className="text-white/40 text-xs mt-1">{step.desc}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Value Props */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {valueProps.map((item) => (
+                <div
+                  key={item.title}
+                  className="p-5 rounded-2xl transition-all duration-200 hover:scale-[1.02]"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <div className="text-2xl mb-2">{item.emoji}</div>
+                  <p className="text-white font-semibold text-sm mb-1">
+                    {item.title}
+                  </p>
+                  <p className="text-white/40 text-xs leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -416,7 +592,7 @@ export default function Home() {
             Ready to Launch Your Career?
           </h2>
           <p className="text-white/60 mb-6">
-            Join 10,000+ students who've built their dream careers using
+            Join 10,000+ students who have built their dream careers using
             SMARTRESUME AI.
           </p>
           <Link
@@ -431,7 +607,8 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-white/6 px-6 md:px-10 py-6 text-center text-white/30 text-sm">
-        © {new Date().getFullYear()} SMARTRESUME AI. Built with ❤️ using{" "}
+        {"\u00A9"} {new Date().getFullYear()} SMARTRESUME AI. Built with{" "}
+        {"\u2764\uFE0F"} using{" "}
         <a
           href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`}
           target="_blank"
