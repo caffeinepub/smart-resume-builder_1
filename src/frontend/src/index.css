@@ -392,13 +392,14 @@ body.light-mode .text-white\/70 {
   color: rgba(26, 26, 46, 0.7) !important;
 }
 
-.sidebar-nav-item {
+/* Sidebar nav items — light mode only */
+body.light-mode .sidebar-nav-item {
   color: rgba(26, 26, 46, 0.65) !important;
 }
 
 body.light-mode .sidebar-nav-item:hover {
   background: rgba(124, 92, 255, 0.08) !important;
-  color: #1a1a2e !important;
+  color: #111 !important;
 }
 
 body.light-mode .sidebar-nav-item.active {
@@ -407,7 +408,25 @@ body.light-mode .sidebar-nav-item.active {
     rgba(124, 92, 255, 0.15),
     rgba(75, 139, 255, 0.1)
   ) !important;
-  color: #1a1a2e !important;
+  color: #111 !important;
+  border-color: rgba(124, 92, 255, 0.25) !important;
+}
+
+/* Sidebar bottom section — light mode */
+body.light-mode aside .bg-white\/5 {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-mode aside .border-white\/6 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-mode aside .text-white {
+  color: #111 !important;
+}
+
+body.light-mode aside .text-white\/40 {
+  color: rgba(17, 17, 17, 0.5) !important;
 }
 
 body.light-mode .btn-primary {

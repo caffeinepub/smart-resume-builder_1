@@ -1,10 +1,14 @@
 import { getUserKey } from "./auth";
 // ============================================================
-// Dark Mode
+// Dark Mode — stored per logged-in user
 // ============================================================
+function darkModeKey(): string {
+  return getUserKey("smartresume_dark_mode");
+}
+
 export function getDarkMode(): boolean {
   try {
-    const val = localStorage.getItem("smartresume_dark_mode");
+    const val = localStorage.getItem(darkModeKey());
     // Default to dark mode (null means not set yet => dark)
     return val === null ? true : val === "true";
   } catch {
@@ -13,7 +17,7 @@ export function getDarkMode(): boolean {
 }
 
 export function setDarkMode(v: boolean): void {
-  localStorage.setItem("smartresume_dark_mode", String(v));
+  localStorage.setItem(darkModeKey(), String(v));
   if (v) {
     document.documentElement.classList.add("dark");
     document.documentElement.classList.remove("light-mode");
@@ -32,16 +36,20 @@ export function initDarkMode(): void {
 }
 
 // ============================================================
-// Daily Streak
+// Daily Streak — stored per logged-in user
 // ============================================================
 export interface StreakData {
   count: number;
   lastDate: string;
 }
 
+function streakKey(): string {
+  return getUserKey("smartresume_streak");
+}
+
 export function getStreak(): StreakData {
   try {
-    const raw = localStorage.getItem("smartresume_streak");
+    const raw = localStorage.getItem(streakKey());
     return raw ? (JSON.parse(raw) as StreakData) : { count: 0, lastDate: "" };
   } catch {
     return { count: 0, lastDate: "" };
@@ -70,7 +78,7 @@ export function updateStreak(): number {
   }
 
   const updated: StreakData = { count: newCount, lastDate: today };
-  localStorage.setItem("smartresume_streak", JSON.stringify(updated));
+  localStorage.setItem(streakKey(), JSON.stringify(updated));
   return newCount;
 }
 

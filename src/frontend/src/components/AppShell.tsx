@@ -33,7 +33,6 @@ import {
   addNotification,
   getDarkMode,
   getNotifications,
-  getStreak,
   getUnreadCount,
   markAllRead,
   setDarkMode,
@@ -164,6 +163,10 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-time setup
   useEffect(() => {
+    // Apply this user's saved theme preference on mount
+    const userDark = getDarkMode();
+    setDarkModeState(userDark);
+    setDarkMode(userDark);
     const s = updateStreak();
     setStreak(s);
     setNotifications(getNotifications());
@@ -184,16 +187,6 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
     }
     setNotifications(getNotifications());
     setUnreadCount(getUnreadCount());
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setNotifOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const handleDarkToggle = () => {
@@ -229,14 +222,87 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
         />
       )}
 
+      {/* Notification overlay */}
+      {notifOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-[999]"
+            style={{
+              backdropFilter: "blur(6px)",
+              background: "rgba(0,0,0,0.3)",
+            }}
+            onClick={() => setNotifOpen(false)}
+            onKeyDown={(e) => e.key === "Escape" && setNotifOpen(false)}
+            role="button"
+            tabIndex={-1}
+            aria-label="Close notifications"
+          />
+          {/* Panel */}
+          <div
+            className="fixed top-[70px] right-5 w-80 glass-card shadow-2xl z-[1000] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+            data-ocid="nav.notifications.popover"
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <span className="text-white font-semibold text-sm">
+                Notifications
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="text-purple-400 text-xs hover:text-purple-300"
+                  data-ocid="nav.notifications.mark_read.button"
+                >
+                  Mark all read
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNotifOpen(false)}
+                  className="text-white/40 hover:text-white ml-1"
+                  data-ocid="nav.notifications.close_button"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+            <div className="max-h-72 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <p className="text-white/40 text-sm text-center py-6">
+                  No notifications
+                </p>
+              ) : (
+                notifications.slice(0, 8).map((n) => (
+                  <div
+                    key={n.id}
+                    className={`px-4 py-3 border-b border-white/5 text-sm ${
+                      n.read ? "text-white/40" : "text-white"
+                    }`}
+                  >
+                    <p>{n.message}</p>
+                    <p className="text-white/25 text-xs mt-0.5">
+                      {new Date(n.createdAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Sidebar */}
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-30 w-[260px] flex flex-col transition-transform duration-300 lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
-          background: "linear-gradient(180deg, #070C2A 0%, #0B1236 100%)",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
+          background: darkMode
+            ? "linear-gradient(180deg, #070C2A 0%, #0B1236 100%)"
+            : "linear-gradient(180deg, #ffffff 0%, #f8f9ff 100%)",
+          borderRight: darkMode
+            ? "1px solid rgba(255,255,255,0.06)"
+            : "1px solid rgba(0,0,0,0.08)",
         }}
       >
         {/* Logo */}
@@ -332,10 +398,15 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
         <header
-          className="flex-shrink-0 flex items-center gap-4 px-5 py-3 border-b border-white/6"
+          className="flex-shrink-0 flex items-center gap-4 px-5 py-3"
           style={{
-            background: "rgba(7, 12, 42, 0.85)",
+            background: darkMode
+              ? "rgba(7, 12, 42, 0.85)"
+              : "rgba(248, 249, 255, 0.95)",
             backdropFilter: "blur(12px)",
+            borderBottom: darkMode
+              ? "1px solid rgba(255,255,255,0.06)"
+              : "1px solid rgba(0,0,0,0.08)",
           }}
         >
           <button
@@ -380,7 +451,7 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
               {darkMode ? <Sun size={15} /> : <Moon size={15} />}
             </button>
 
-            <div className="relative z-[9999]" ref={notifRef}>
+            <div ref={notifRef}>
               <button
                 type="button"
                 onClick={() => setNotifOpen((v) => !v)}
@@ -394,47 +465,6 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
                   </span>
                 )}
               </button>
-              {notifOpen && (
-                <div
-                  className="absolute right-0 top-11 w-80 glass-card shadow-2xl z-[9999] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
-                  data-ocid="nav.notifications.popover"
-                >
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
-                    <span className="text-white font-semibold text-sm">
-                      Notifications
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleMarkAllRead}
-                      className="text-purple-400 text-xs hover:text-purple-300"
-                      data-ocid="nav.notifications.mark_read.button"
-                    >
-                      Mark all read
-                    </button>
-                  </div>
-                  <div className="max-h-72 overflow-y-auto">
-                    {notifications.length === 0 ? (
-                      <p className="text-white/40 text-sm text-center py-6">
-                        No notifications
-                      </p>
-                    ) : (
-                      notifications.slice(0, 8).map((n) => (
-                        <div
-                          key={n.id}
-                          className={`px-4 py-3 border-b border-white/5 text-sm ${
-                            n.read ? "text-white/40" : "text-white"
-                          }`}
-                        >
-                          <p>{n.message}</p>
-                          <p className="text-white/25 text-xs mt-0.5">
-                            {new Date(n.createdAt).toLocaleTimeString()}
-                          </p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
 
             <Link

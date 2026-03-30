@@ -14,12 +14,15 @@ interface UserProfile {
   aboutMe: string;
 }
 
-const PROFILE_KEY = "smartresume_user_profile";
+function profileKey(): string {
+  return getUserKey("smartresume_profile");
+}
 
 function loadProfile(): UserProfile {
   try {
-    const raw = localStorage.getItem(PROFILE_KEY);
+    const raw = localStorage.getItem(profileKey());
     if (raw) return JSON.parse(raw) as UserProfile;
+    // Only fall back to resume data if no profile saved for THIS user
     const resume = loadResume();
     return {
       fullName: resume?.name ?? "",
@@ -40,7 +43,7 @@ function loadProfile(): UserProfile {
 }
 
 function saveProfile(profile: UserProfile): void {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  localStorage.setItem(profileKey(), JSON.stringify(profile));
 }
 
 export default function ProfilePage() {

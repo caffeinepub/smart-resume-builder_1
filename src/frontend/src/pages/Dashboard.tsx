@@ -213,7 +213,9 @@ function EmptyAnalyticsState() {
       <div className="w-20 h-20 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-5">
         <BarChart2 size={36} className="text-purple-400" />
       </div>
-      <h3 className="text-white font-bold text-xl mb-2">No Analytics Yet</h3>
+      <h3 className="text-white font-bold text-xl mb-2">
+        Start your career journey
+      </h3>
       <p className="text-white/50 text-sm mb-6 max-w-sm">
         Create or Upload a Resume to see your ATS score, skill gaps, eligible
         roles, and career readiness.
