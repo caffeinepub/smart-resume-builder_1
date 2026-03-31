@@ -36,15 +36,19 @@ import {
 } from "recharts";
 import AppShell from "../components/AppShell";
 import { getScoreColor, getScoreLabel } from "../utils/atsEngine";
-import { getUserKey } from "../utils/auth";
+import { getStoredAuth, getUserKey, getUserStream } from "../utils/auth";
 import { getStreak } from "../utils/extras";
-import { ROLES, getRoleEligibility } from "../utils/roleData";
 import {
   getResumeCompletionPercent,
   loadATSResult,
   loadCareerProfile,
   loadResume,
 } from "../utils/storage";
+import {
+  getStreamById,
+  getStreamRoleEligibility,
+  getStreamRoles,
+} from "../utils/streamData";
 
 const FEATURE_CARDS = [
   {
@@ -88,7 +92,7 @@ const FEATURE_CARDS = [
     bg: "rgba(236,72,153,0.15)",
   },
   {
-    title: "CSE Projects",
+    title: "Projects",
     desc: "Portfolio-worthy project ideas",
     path: "/projects",
     icon: Code2,
@@ -97,7 +101,7 @@ const FEATURE_CARDS = [
   },
   {
     title: "Mock Tests",
-    desc: "Practice aptitude & DSA",
+    desc: "Practice aptitude & skills",
     path: "/mock-tests",
     icon: ClipboardCheck,
     color: "#F97316",
@@ -159,14 +163,6 @@ const FEATURE_CARDS = [
     color: "#F59E0B",
     bg: "rgba(245,158,11,0.15)",
   },
-];
-
-const TOP_SKILLS = [
-  { skill: "TypeScript", category: "Programming" },
-  { skill: "Docker", category: "DevOps" },
-  { skill: "SQL", category: "Database" },
-  { skill: "Machine Learning", category: "AI/ML" },
-  { skill: "System Design", category: "Architecture" },
 ];
 
 function ScoreRing({
@@ -244,8 +240,14 @@ export default function Dashboard() {
   const resume = loadResume();
   const atsResult = loadATSResult();
   const careerProfile = loadCareerProfile();
+  const auth = getStoredAuth();
 
   const hasData = !!(resume || atsResult);
+
+  // Stream info
+  const userStream = getUserStream();
+  const streamDef = getStreamById(userStream);
+  const streamRoles = getStreamRoles(userStream);
 
   const completionPct = getResumeCompletionPercent(resume);
   const atsScore = atsResult?.score ?? 0;
@@ -314,7 +316,6 @@ export default function Dashboard() {
       Math.min(completedProjects * 5, 15),
   );
 
-  // Only add a completion notification if they have actual resume data
   useEffect(() => {
     if (resume && completionPct > 0) {
       const key = `dashboard_notif_${completionPct}`;
@@ -324,25 +325,47 @@ export default function Dashboard() {
     }
   }, [resume, completionPct]);
 
+  // Stream-based eligible roles
   const eligibleRoles = useMemo(() => {
     if (!resume) return [];
-    return Object.entries(ROLES)
-      .map(([name]) => ({ name, ...getRoleEligibility(resume.skills, name) }))
+    return streamRoles
+      .map((role) => ({
+        name: role.name,
+        ...getStreamRoleEligibility(resume.skills, role),
+      }))
       .filter((r) => r.eligible);
-  }, [resume]);
+  }, [resume, streamRoles]);
 
+  // Stream-based skill coverage chart
   const skillCoverageData = useMemo(() => {
     if (!resume) return [];
-    return Object.entries(ROLES)
-      .slice(0, 6)
-      .map(([name]) => {
-        const { matchPercent } = getRoleEligibility(resume.skills, name);
-        return {
-          role: name.split(" ").slice(0, 2).join(" "),
-          percent: matchPercent,
-        };
-      });
-  }, [resume]);
+    return streamRoles.slice(0, 6).map((role) => {
+      const { matchPercent } = getStreamRoleEligibility(resume.skills, role);
+      return {
+        role: role.name.split(" ").slice(0, 2).join(" "),
+        percent: matchPercent,
+      };
+    });
+  }, [resume, streamRoles]);
+
+  // Stream-based top skills recommendations
+  const topSkills = useMemo(() => {
+    const allSkills = streamRoles.flatMap((r) => r.requiredSkills);
+    const unique = [...new Set(allSkills)];
+    const userSkills = resume?.skills.map((s) => s.toLowerCase()) ?? [];
+    // Prioritize skills user doesn't have yet
+    const missing = unique.filter(
+      (s) => !userSkills.some((us) => us.includes(s.toLowerCase())),
+    );
+    const prioritized = [
+      ...missing,
+      ...unique.filter((s) => !missing.includes(s)),
+    ];
+    return prioritized.slice(0, 5).map((skill) => ({
+      skill,
+      category: streamDef.label,
+    }));
+  }, [streamRoles, resume, streamDef.label]);
 
   const radarData = [
     { subject: "Resume", value: completionPct },
@@ -380,8 +403,11 @@ export default function Dashboard() {
       value: `${eligibleRoles.length}`,
       icon: Award,
       color: "#39D98A",
-      sub: "out of 8 roles",
-      num: eligibleRoles.length * 12.5,
+      sub: `of ${streamRoles.length} roles`,
+      num:
+        streamRoles.length > 0
+          ? (eligibleRoles.length / streamRoles.length) * 100
+          : 0,
     },
     {
       label: "Career Readiness",
@@ -431,6 +457,21 @@ export default function Dashboard() {
   return (
     <AppShell title="Dashboard" subtitle="Your career overview">
       <div className="max-w-7xl mx-auto space-y-6" data-ocid="dashboard.page">
+        {/* Welcome Banner with Stream Badge */}
+        <div
+          className="glass-card p-5 flex items-center justify-between gap-4"
+          data-ocid="dashboard.welcome.card"
+        >
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-white">
+              Welcome back, {auth?.name ?? "User"}
+            </h1>
+            <p className="text-white/40 text-sm mt-0.5">
+              Your personalized career platform
+            </p>
+          </div>
+        </div>
+
         {/* Feature Navigation Grid */}
         <div data-ocid="dashboard.features.section">
           <h2 className="section-heading mb-4">Quick Access</h2>
@@ -607,7 +648,9 @@ export default function Dashboard() {
                   className="glass-card p-6 lg:col-span-2"
                   data-ocid="dashboard.skills_chart.panel"
                 >
-                  <h3 className="section-heading">Role Skill Coverage</h3>
+                  <h3 className="section-heading">
+                    {streamDef.label} Role Coverage
+                  </h3>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart
                       data={skillCoverageData}
@@ -639,7 +682,7 @@ export default function Dashboard() {
                           <Cell
                             // biome-ignore lint/suspicious/noArrayIndexKey: stable index
                             key={idx}
-                            fill={idx % 2 === 0 ? "#7C5CFF" : "#35D0C7"}
+                            fill={idx % 2 === 0 ? streamDef.color : "#35D0C7"}
                           />
                         ))}
                       </Bar>
@@ -671,19 +714,34 @@ export default function Dashboard() {
               className="glass-card p-6"
               data-ocid="dashboard.skill_recommendations.panel"
             >
-              <h3 className="section-heading">Skill Recommendations</h3>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="section-heading">Skill Recommendations</h3>
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full border"
+                  style={{
+                    color: streamDef.color,
+                    background: `${streamDef.color}15`,
+                    borderColor: `${streamDef.color}35`,
+                  }}
+                >
+                  {streamDef.label}
+                </span>
+              </div>
               <p className="text-white/40 text-sm mb-4">
-                Top skills to learn based on market demand and role requirements
+                Top skills to learn based on your stream's role requirements
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                {TOP_SKILLS.map((item, i) => (
+                {topSkills.map((item, i) => (
                   <div
                     key={item.skill}
                     className="glass-card-hover p-4"
                     data-ocid={`dashboard.skill_rec.item.${i + 1}`}
                   >
-                    <div className="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center mb-2">
-                      <Zap size={14} className="text-purple-400" />
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center mb-2"
+                      style={{ background: `${streamDef.color}20` }}
+                    >
+                      <Zap size={14} style={{ color: streamDef.color }} />
                     </div>
                     <p className="text-white font-semibold text-sm">
                       {item.skill}
@@ -720,8 +778,8 @@ export default function Dashboard() {
                     <Radar
                       name="Score"
                       dataKey="value"
-                      stroke="#7C5CFF"
-                      fill="#7C5CFF"
+                      stroke={streamDef.color}
+                      fill={streamDef.color}
                       fillOpacity={0.3}
                     />
                   </RadarChart>
@@ -864,79 +922,16 @@ export default function Dashboard() {
                         </div>
                         <div className="progress-bar-track">
                           <div
-                            className="progress-bar-fill transition-all duration-700"
+                            className="progress-bar-fill"
                             style={{
                               width: `${pct}%`,
-                              background: `linear-gradient(90deg, ${color}60, ${color})`,
+                              background: `linear-gradient(90deg, ${color}aa, ${color})`,
                             }}
                           />
                         </div>
                       </div>
                     );
                   })}
-                </div>
-              </div>
-            )}
-
-            {/* Resume Card */}
-            {resume && (
-              <div
-                className="glass-card p-6"
-                data-ocid="dashboard.resume.panel"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="section-heading mb-1">My Resume</h3>
-                    <p className="text-white/40 text-sm">
-                      {resume.name} · {resume.email}
-                    </p>
-                  </div>
-                  <Link
-                    to="/resume-builder"
-                    className="btn-primary text-sm py-2 px-4 flex items-center gap-1"
-                    data-ocid="dashboard.edit_resume.button"
-                  >
-                    <FileText size={14} /> Edit
-                  </Link>
-                </div>
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {[
-                    { label: "Skills", value: resume.skills.length },
-                    { label: "Projects", value: resume.projects.length },
-                    { label: "Experience", value: resume.experience.length },
-                    {
-                      label: "Certifications",
-                      value: resume.certifications.length,
-                    },
-                  ].map((s, i) => (
-                    <div
-                      // biome-ignore lint/suspicious/noArrayIndexKey: stable index
-                      key={i}
-                      className="bg-white/5 rounded-xl p-3 text-center"
-                      data-ocid={`dashboard.resume.stat.${i + 1}`}
-                    >
-                      <div className="text-2xl font-bold text-white">
-                        {s.value}
-                      </div>
-                      <div className="text-white/40 text-xs">{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {resume.skills.slice(0, 8).map((s) => (
-                    <span
-                      key={s}
-                      className="skill-chip flex items-center gap-1"
-                    >
-                      <Zap size={10} />
-                      {s}
-                    </span>
-                  ))}
-                  {resume.skills.length > 8 && (
-                    <span className="skill-chip text-white/40">
-                      +{resume.skills.length - 8} more
-                    </span>
-                  )}
                 </div>
               </div>
             )}

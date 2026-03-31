@@ -1,19 +1,36 @@
 import {
+  Activity,
+  Award,
   BarChart2,
   Brain,
+  Briefcase,
+  Building2,
   CheckCircle2,
   Code2,
+  Cog,
+  DollarSign,
+  FileText,
   Globe,
+  GraduationCap,
+  Heart,
   Layers,
+  Link as LinkIcon,
   Monitor,
+  Palette,
   Server,
   Settings2,
+  Shield,
+  Target,
+  TrendingUp,
+  Users,
   XCircle,
+  Zap,
 } from "lucide-react";
 import { useMemo } from "react";
 import AppShell from "../components/AppShell";
-import { ROLES, getRoleEligibility } from "../utils/roleData";
+import { getUserStream } from "../utils/auth";
 import { loadResume } from "../utils/storage";
+import { getStreamRoleEligibility, getStreamRoles } from "../utils/streamData";
 
 const ICON_MAP: Record<
   string,
@@ -31,19 +48,37 @@ const ICON_MAP: Record<
   Layers,
   Settings2,
   Brain,
+  Cog,
+  Zap,
+  Building2,
+  Briefcase,
+  Heart,
+  TrendingUp,
+  Palette,
+  Target,
+  Activity,
+  Award,
+  DollarSign,
+  FileText,
+  GraduationCap,
+  Shield,
+  Users,
+  LinkIcon,
 };
 
 export default function RoleEligibility() {
   const resume = loadResume();
   const skills = resume?.skills ?? [];
+  const userStream = getUserStream();
+  const streamRoles = getStreamRoles(userStream);
 
   const roleResults = useMemo(() => {
-    return Object.entries(ROLES).map(([name, role]) => ({
-      name,
+    return streamRoles.map((role) => ({
+      name: role.name,
       role,
-      ...getRoleEligibility(skills, name),
+      ...getStreamRoleEligibility(skills, role),
     }));
-  }, [skills]);
+  }, [skills, streamRoles]);
 
   const eligible = roleResults.filter((r) => r.eligible);
   const ineligible = roleResults.filter((r) => !r.eligible);
@@ -55,10 +90,12 @@ export default function RoleEligibility() {
     >
       <div className="max-w-6xl mx-auto" data-ocid="role_eligibility.page">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white">Role Eligibility</h1>
-          <p className="text-white/40 text-sm mt-0.5">
-            Based on your {skills.length} skills from your saved resume
-          </p>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Role Eligibility</h1>
+            <p className="text-white/40 text-sm mt-0.5">
+              Based on your {skills.length} skills from your saved resume
+            </p>
+          </div>
         </div>
 
         {/* Summary */}
@@ -235,6 +272,21 @@ export default function RoleEligibility() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* No resume state */}
+        {skills.length === 0 && (
+          <div
+            className="glass-card p-10 text-center mt-6"
+            data-ocid="role_eligibility.empty_state"
+          >
+            <p className="text-white/40 mb-3">
+              No skills found. Build your resume to see eligible roles.
+            </p>
+            <a href="/resume-builder" className="btn-primary text-sm py-2 px-5">
+              Build Resume
+            </a>
           </div>
         )}
       </div>

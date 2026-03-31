@@ -12,9 +12,11 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import AppShell from "../components/AppShell";
 import { getScoreColor, getScoreLabel, scoreResume } from "../utils/atsEngine";
+import { getUserStream } from "../utils/auth";
 import { addNotification } from "../utils/extras";
 import { loadATSResult, saveATSResult } from "../utils/storage";
 import type { ATSResult } from "../utils/storage";
+import { getStreamById } from "../utils/streamData";
 
 function ScoreRing({
   score,
@@ -66,7 +68,6 @@ function ScoreRing({
 }
 
 async function extractTextFromPDF(file: File): Promise<string> {
-  // Load PDF.js from CDN at runtime to avoid bundling issues
   const PDFJS_CDN =
     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
   const WORKER_CDN =
@@ -94,8 +95,7 @@ async function extractTextFromPDF(file: File): Promise<string> {
     const pageText = content.items
       .map((item: any) => ("str" in item ? item.str : ""))
       .join(" ");
-    fullText += `${pageText}
-`;
+    fullText += `${pageText}\n`;
   }
   return fullText;
 }
@@ -106,6 +106,10 @@ export default function ATSAnalyzer() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const userStream = getUserStream();
+  const streamDef = getStreamById(userStream);
+  const streamKeywords = streamDef.atsKeywords;
 
   const handleFile = async (file: File) => {
     if (!file.name.endsWith(".pdf") && file.type !== "application/pdf") {
@@ -123,23 +127,48 @@ export default function ATSAnalyzer() {
         setLoading(false);
         return;
       }
-      // Slight delay for UX
       setTimeout(() => {
         const r = scoreResume(text);
-        setResult(r);
-        saveATSResult(r);
+        // Enrich with stream keywords check
+        const textLower = text.toLowerCase();
+        const foundStreamKeywords = streamKeywords.filter((k) =>
+          textLower.includes(k.toLowerCase()),
+        );
+        const missingStreamKeywords = streamKeywords.filter(
+          (k) => !textLower.includes(k.toLowerCase()),
+        );
+        // Merge stream keywords into existing missing skills
+        const enrichedMissingSkills = Array.from(
+          new Set([...r.missingSkills, ...missingStreamKeywords.slice(0, 3)]),
+        ).slice(0, 8);
+        const enrichedResult: ATSResult = {
+          ...r,
+          missingSkills: enrichedMissingSkills,
+          suggestions: [
+            ...r.suggestions,
+            foundStreamKeywords.length < 3
+              ? `Add more ${streamDef.label} keywords: ${missingStreamKeywords.slice(0, 3).join(", ")}`
+              : `Good use of ${streamDef.label} keywords! Found: ${foundStreamKeywords.slice(0, 3).join(", ")}`,
+          ].slice(0, 6),
+        };
+        setResult(enrichedResult);
+        saveATSResult(enrichedResult);
         addNotification("ATS Analysis Completed");
         setLoading(false);
-        toast.success(`ATS Score: ${r.score}/100 — ${getScoreLabel(r.score)}`);
+        toast.success(
+          `ATS Score: ${enrichedResult.score}/100 — ${getScoreLabel(enrichedResult.score)}`,
+        );
       }, 800);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to parse PDF. Please try a different file.");
+      toast.error(
+        "Failed to parse PDF. Make sure it's a valid text-based PDF.",
+      );
       setLoading(false);
     }
   };
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) handleFile(file);
   };
@@ -151,314 +180,266 @@ export default function ATSAnalyzer() {
     if (file) handleFile(file);
   };
 
-  const scoreColor = result ? getScoreColor(result.score) : "#7C5CFF";
-
   return (
-    <AppShell title="ATS Analyzer" subtitle="Score your resume">
-      <div className="max-w-6xl mx-auto" data-ocid="ats_analyzer.page">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white">ATS Resume Analyzer</h1>
-          <p className="text-white/40 text-sm mt-0.5">
-            Upload your resume PDF to get an instant ATS score and improvement
-            tips
-          </p>
+    <AppShell title="ATS Analyzer" subtitle="Check your resume's ATS score">
+      <div className="max-w-4xl mx-auto" data-ocid="ats_analyzer.page">
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              ATS Resume Analyzer
+            </h1>
+            <p className="text-white/40 text-sm mt-0.5">
+              Upload your resume PDF to get an ATS compatibility score
+            </p>
+          </div>
+          <span
+            className="text-sm font-medium px-3 py-1.5 rounded-full border flex items-center gap-1.5"
+            style={{
+              color: streamDef.color,
+              background: `${streamDef.color}15`,
+              borderColor: `${streamDef.color}35`,
+            }}
+            data-ocid="ats_analyzer.stream.badge"
+          >
+            <Zap size={12} />
+            Analyzing for {streamDef.label} roles
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div
-              className="glass-card p-5"
-              data-ocid="ats_analyzer.input.panel"
-            >
-              <h3 className="text-white font-semibold mb-4">
-                Upload Resume (PDF Only)
-              </h3>
+        {/* Upload area — using a label wrapping a hidden input for best accessibility */}
+        <label
+          htmlFor="ats-file-input"
+          className={`glass-card p-8 mb-6 flex flex-col items-center justify-center text-center border-2 border-dashed transition-all cursor-pointer block ${
+            dragOver
+              ? "border-purple-500 bg-purple-500/10"
+              : "border-white/10 hover:border-purple-500/50"
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          data-ocid="ats_analyzer.dropzone"
+        >
+          <input
+            ref={fileInputRef}
+            id="ats-file-input"
+            type="file"
+            accept=".pdf,application/pdf"
+            className="hidden"
+            onChange={handleInputChange}
+            data-ocid="ats_analyzer.upload_button"
+          />
+          <div className="w-16 h-16 rounded-2xl bg-purple-500/15 border border-purple-500/25 flex items-center justify-center mb-4">
+            {loading ? (
+              <RefreshCw size={28} className="text-purple-400 animate-spin" />
+            ) : (
+              <Upload size={28} className="text-purple-400" />
+            )}
+          </div>
+          {loading ? (
+            <>
+              <p className="text-white font-semibold mb-1">
+                Analyzing Resume...
+              </p>
+              <p className="text-white/40 text-sm">
+                Checking ATS compatibility for {streamDef.label} roles
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-white font-semibold mb-1">
+                {fileName ? fileName : "Drop your resume PDF here"}
+              </p>
+              <p className="text-white/40 text-sm mb-3">
+                {fileName
+                  ? "Click to upload a different file"
+                  : "or click to browse files"}
+              </p>
+              <span className="text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/50">
+                PDF only — max 10MB
+              </span>
+            </>
+          )}
+        </label>
 
-              {/* Drop Zone */}
-              <div
-                className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 ${
-                  dragOver
-                    ? "border-purple-400 bg-purple-500/10"
-                    : "border-white/15 hover:border-white/30 hover:bg-white/5"
-                }`}
-                onClick={() => fileInputRef.current?.click()}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && fileInputRef.current?.click()
-                }
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                aria-label="Upload PDF"
-                data-ocid="ats_analyzer.dropzone"
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  className="hidden"
-                  onChange={handleFileInput}
-                  data-ocid="ats_analyzer.file_input"
+        {/* Stream keywords preview */}
+        {!result && !loading && (
+          <div
+            className="glass-card p-5 mb-6"
+            data-ocid="ats_analyzer.keywords.panel"
+          >
+            <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+              <Target size={14} style={{ color: streamDef.color }} />
+              Keywords we check for {streamDef.label}
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {streamKeywords.map((kw) => (
+                <span
+                  key={kw}
+                  className="text-xs px-2 py-1 rounded-lg border"
+                  style={{
+                    color: streamDef.color,
+                    background: `${streamDef.color}10`,
+                    borderColor: `${streamDef.color}30`,
+                  }}
+                >
+                  {kw}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Results */}
+        {result && (
+          <div
+            className="space-y-6 animate-fade-in-up"
+            data-ocid="ats_analyzer.results.panel"
+          >
+            {/* Score + Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="glass-card p-6 flex flex-col items-center">
+                <h3 className="section-heading mb-4">ATS Score</h3>
+                <ScoreRing
+                  score={result.score}
+                  color={getScoreColor(result.score)}
                 />
-                {loading ? (
-                  <>
-                    <RefreshCw
-                      size={40}
-                      className="text-purple-400 animate-spin mb-3"
-                    />
-                    <p className="text-white font-medium">
-                      Analyzing your resume...
-                    </p>
-                    <p className="text-white/40 text-sm mt-1">
-                      Extracting text and scoring
-                    </p>
-                  </>
-                ) : fileName ? (
-                  <>
-                    <div className="w-14 h-14 rounded-2xl bg-green-500/15 border border-green-500/30 flex items-center justify-center mb-3">
-                      <FileText size={28} className="text-green-400" />
-                    </div>
-                    <p className="text-white font-semibold">{fileName}</p>
-                    <p className="text-white/40 text-sm mt-1">
-                      Click to upload a different file
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center mb-3">
-                      <Upload size={28} className="text-purple-400" />
-                    </div>
-                    <p className="text-white font-semibold">
-                      Drag & drop your PDF here
-                    </p>
-                    <p className="text-white/40 text-sm mt-1">
-                      or click to browse files
-                    </p>
-                    <p className="text-white/25 text-xs mt-2">
-                      .pdf files only · Max 10MB
-                    </p>
-                  </>
-                )}
-              </div>
-
-              {!loading && (
+                <div className="mt-4 text-center">
+                  <span
+                    className="text-2xl font-bold"
+                    style={{ color: getScoreColor(result.score) }}
+                  >
+                    {getScoreLabel(result.score)}
+                  </span>
+                  <p className="text-white/40 text-sm mt-1">
+                    Analyzed on{" "}
+                    {new Date(
+                      result.analyzedAt ?? Date.now(),
+                    ).toLocaleDateString()}
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="btn-primary w-full mt-4 flex items-center justify-center gap-2 py-2.5"
-                  data-ocid="ats_analyzer.upload.button"
+                  className="mt-4 btn-secondary text-xs flex items-center gap-2"
+                  data-ocid="ats_analyzer.re_analyze.button"
                 >
-                  <Upload size={15} /> Choose PDF File
+                  <RefreshCw size={13} /> Re-analyze
                 </button>
-              )}
-            </div>
+              </div>
 
-            <div className="glass-card p-5">
-              <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                <Lightbulb size={16} className="text-yellow-400" /> How ATS
-                Scoring Works
-              </h3>
-              <div className="space-y-2">
-                {[
-                  {
-                    label: "Section Detection",
-                    pts: "60 pts",
-                    desc: "Summary, Education, Experience, Skills, Projects, Certifications",
-                  },
-                  {
-                    label: "Keyword Density",
-                    pts: "20 pts",
-                    desc: "Tech keywords: JavaScript, React, Python, SQL, Git, API...",
-                  },
-                  {
-                    label: "Content Length",
-                    pts: "10 pts",
-                    desc: "Minimum 350 words for comprehensive parsing",
-                  },
-                  {
-                    label: "Formatting Cues",
-                    pts: "10 pts",
-                    desc: "Email, phone, GitHub/LinkedIn links",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="flex items-start gap-3 py-2 border-b border-white/5 last:border-0"
-                  >
-                    <span className="text-purple-400 font-bold text-xs bg-purple-500/10 px-2 py-0.5 rounded flex-shrink-0">
-                      {item.pts}
-                    </span>
-                    <div>
-                      <p className="text-white text-sm font-medium">
-                        {item.label}
-                      </p>
-                      <p className="text-white/40 text-xs">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="glass-card p-6">
+                <h3 className="section-heading mb-4">Resume Sections</h3>
+                <div className="space-y-2">
+                  {[
+                    "Summary/Objective",
+                    "Education",
+                    "Work Experience",
+                    "Skills",
+                    "Projects",
+                    "Certifications",
+                  ].map((section) => {
+                    const missing = result.missingSections.includes(section);
+                    return (
+                      <div key={section} className="flex items-center gap-3">
+                        {missing ? (
+                          <AlertCircle
+                            size={14}
+                            className="text-red-400 flex-shrink-0"
+                          />
+                        ) : (
+                          <CheckCircle2
+                            size={14}
+                            className="text-green-400 flex-shrink-0"
+                          />
+                        )}
+                        <span
+                          className={`text-sm ${
+                            missing ? "text-white/40" : "text-white"
+                          }`}
+                        >
+                          {section}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-4">
-            {result ? (
-              <>
-                <div
-                  className="glass-card p-6 flex flex-col items-center"
-                  data-ocid="ats_analyzer.score.panel"
-                >
-                  <h3 className="text-white font-semibold mb-4 self-start">
-                    Your ATS Score
-                  </h3>
-                  <ScoreRing
-                    score={result.score}
-                    color={scoreColor}
-                    size={160}
-                  />
-                  <div className="mt-4 text-center">
-                    <span
-                      className="text-2xl font-bold"
-                      style={{ color: scoreColor }}
-                    >
-                      {getScoreLabel(result.score)}
-                    </span>
-                    <p className="text-white/40 text-sm mt-1">
-                      Analyzed{" "}
-                      {result.analyzedAt
-                        ? new Date(result.analyzedAt).toLocaleString()
-                        : "just now"}
-                    </p>
-                  </div>
-                  <div className="w-full mt-4 grid grid-cols-3 gap-3">
-                    {[
-                      {
-                        label: "Sections",
-                        value: `${6 - result.missingSections.length}/6`,
-                        color: "#39D98A",
-                      },
-                      {
-                        label: "Keywords",
-                        value: `${10 - result.missingSkills.length}/10`,
-                        color: "#35D0C7",
-                      },
-                      {
-                        label: "Missing",
-                        value: `${result.missingSections.length}`,
-                        color: "#EF4444",
-                      },
-                    ].map((s) => (
-                      <div
-                        key={s.label}
-                        className="bg-white/5 rounded-xl p-3 text-center"
-                      >
-                        <div
-                          className="text-xl font-bold"
-                          style={{ color: s.color }}
-                        >
-                          {s.value}
-                        </div>
-                        <div className="text-white/40 text-xs">{s.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {result.missingSections.length > 0 && (
-                  <div
-                    className="glass-card p-5"
-                    data-ocid="ats_analyzer.missing_sections.panel"
-                  >
-                    <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                      <AlertCircle size={16} className="text-red-400" /> Missing
-                      Sections
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {result.missingSections.map((s, i) => (
-                        <span
-                          // biome-ignore lint/suspicious/noArrayIndexKey: index is stable
-                          key={i}
-                          className="skill-chip-missing"
-                          data-ocid={`ats_analyzer.missing_section.item.${i + 1}`}
-                        >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {result.missingSkills.length > 0 && (
-                  <div
-                    className="glass-card p-5"
-                    data-ocid="ats_analyzer.missing_keywords.panel"
-                  >
-                    <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                      <Zap size={16} className="text-yellow-400" /> Missing
-                      Keywords
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {result.missingSkills.map((k, i) => (
-                        <span
-                          // biome-ignore lint/suspicious/noArrayIndexKey: index is stable
-                          key={i}
-                          className="skill-chip"
-                          data-ocid={`ats_analyzer.missing_keyword.item.${i + 1}`}
-                        >
-                          {k}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div
-                  className="glass-card p-5"
-                  data-ocid="ats_analyzer.suggestions.panel"
-                >
-                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-green-400" />{" "}
-                    Improvement Suggestions
-                  </h3>
-                  <div className="space-y-2">
-                    {result.suggestions.map((s, i) => (
-                      <div
-                        // biome-ignore lint/suspicious/noArrayIndexKey: index is stable
-                        key={i}
-                        className="flex items-start gap-2 py-2 border-b border-white/5 last:border-0"
-                        data-ocid={`ats_analyzer.suggestion.item.${i + 1}`}
-                      >
-                        <div className="w-5 h-5 rounded-full bg-green-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-green-400 text-xs font-bold">
-                            {i + 1}
-                          </span>
-                        </div>
-                        <p className="text-white/70 text-sm">{s}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            ) : (
+            {/* Missing Skills */}
+            {result.missingSkills.length > 0 && (
               <div
-                className="glass-card p-10 flex flex-col items-center justify-center text-center"
-                data-ocid="ats_analyzer.empty_state"
+                className="glass-card p-5"
+                data-ocid="ats_analyzer.missing_skills.panel"
               >
-                <div className="w-20 h-20 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-5">
-                  <Target size={36} className="text-purple-400" />
+                <h3 className="section-heading mb-4 flex items-center gap-2">
+                  <FileText size={14} className="text-red-400" />
+                  Missing Keywords ({result.missingSkills.length})
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {result.missingSkills.map((skill, i) => (
+                    <span
+                      key={skill}
+                      className="skill-chip-missing"
+                      data-ocid={`ats_analyzer.missing_skill.item.${i + 1}`}
+                    >
+                      {skill}
+                    </span>
+                  ))}
                 </div>
-                <p className="text-white font-semibold text-lg">
-                  Upload Resume to Start Analysis
-                </p>
-                <p className="text-white/30 text-sm mt-2">
-                  Upload your PDF resume above to get ATS score, missing
-                  keywords, and actionable suggestions
-                </p>
+              </div>
+            )}
+
+            {/* Suggestions */}
+            {result.suggestions.length > 0 && (
+              <div
+                className="glass-card p-5"
+                data-ocid="ats_analyzer.suggestions.panel"
+              >
+                <h3 className="section-heading mb-4 flex items-center gap-2">
+                  <Lightbulb size={14} className="text-yellow-400" />
+                  Improvement Suggestions
+                </h3>
+                <ul className="space-y-2">
+                  {result.suggestions.map((sug, i) => (
+                    <li
+                      // biome-ignore lint/suspicious/noArrayIndexKey: stable index
+                      key={i}
+                      className="flex items-start gap-3 text-sm text-white/70"
+                    >
+                      <span
+                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] font-bold"
+                        style={{
+                          background: `${streamDef.color}20`,
+                          color: streamDef.color,
+                        }}
+                      >
+                        {i + 1}
+                      </span>
+                      {sug}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
-        </div>
+        )}
+
+        {!result && !loading && (
+          <div
+            className="glass-card p-8 text-center"
+            data-ocid="ats_analyzer.empty_state"
+          >
+            <Target size={36} className="text-white/20 mx-auto mb-3" />
+            <p className="text-white/50 font-medium">No Resume Analyzed Yet</p>
+            <p className="text-white/30 text-sm mt-2">
+              Upload your PDF resume above to see your ATS compatibility score
+            </p>
+          </div>
+        )}
       </div>
     </AppShell>
   );

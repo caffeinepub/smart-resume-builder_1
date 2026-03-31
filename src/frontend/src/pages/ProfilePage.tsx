@@ -1,10 +1,11 @@
-import { Edit3, Save, User } from "lucide-react";
+import { Edit3, Save } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import AppShell from "../components/AppShell";
-import { getUserKey } from "../utils/auth";
+import { getUserKey, getUserStream } from "../utils/auth";
 import { getBookmarks } from "../utils/extras";
 import { loadResume } from "../utils/storage";
+import { getStreamById } from "../utils/streamData";
 
 interface UserProfile {
   fullName: string;
@@ -49,6 +50,9 @@ function saveProfile(profile: UserProfile): void {
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile>(loadProfile);
   const [editing, setEditing] = useState(false);
+
+  const userStream = getUserStream();
+  const streamDef = getStreamById(userStream);
 
   const resume = loadResume();
   const skillsCount = resume?.skills.length ?? 0;
@@ -130,143 +134,114 @@ export default function ProfilePage() {
                 LinkedIn Profile ↗
               </a>
             )}
+            <div className="flex flex-wrap justify-center sm:justify-start gap-4 mt-3">
+              {stats.map((stat) => (
+                <div key={stat.label} className="text-center">
+                  <div
+                    className="text-xl font-bold"
+                    style={{ color: stat.color }}
+                  >
+                    {stat.value}
+                  </div>
+                  <div className="text-white/40 text-xs">{stat.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setEditing((v) => !v)}
-            className="btn-secondary flex items-center gap-2 py-2 px-4 text-sm flex-shrink-0"
-            data-ocid="profile.edit_button"
-          >
-            <Edit3 size={14} /> {editing ? "Cancel" : "Edit Profile"}
-          </button>
         </div>
 
-        {/* Stats */}
-        <div
-          className="grid grid-cols-4 gap-3 mb-5"
-          data-ocid="profile.stats.section"
-        >
-          {stats.map((s) => (
-            <div key={s.label} className="glass-card p-4 text-center">
-              <div
-                className="text-2xl font-extrabold"
-                style={{ color: s.color }}
+        {/* Edit Profile Form */}
+        <div className="glass-card p-6" data-ocid="profile.form.card">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-white font-semibold">Profile Details</h3>
+            {!editing ? (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                data-ocid="profile.edit.button"
               >
-                {s.value}
-              </div>
-              <div className="text-white/40 text-xs mt-0.5">{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Profile Form */}
-        <div className="glass-card p-6" data-ocid="profile.form">
-          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-            <User size={16} className="text-purple-400" /> Personal Information
-          </h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="profile-name"
-                  className="text-white/50 text-xs font-semibold uppercase tracking-wider block mb-1.5"
-                >
-                  Full Name
-                </label>
-                <input
-                  id="profile-name"
-                  type="text"
-                  value={profile.fullName}
-                  onChange={(e) => handleChange("fullName", e.target.value)}
-                  disabled={!editing}
-                  placeholder="Your full name"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:border-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  data-ocid="profile.name.input"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="profile-mobile"
-                  className="text-white/50 text-xs font-semibold uppercase tracking-wider block mb-1.5"
-                >
-                  Mobile Number
-                </label>
-                <input
-                  id="profile-mobile"
-                  type="tel"
-                  value={profile.mobile}
-                  onChange={(e) => handleChange("mobile", e.target.value)}
-                  disabled={!editing}
-                  placeholder="+91 XXXXXXXXXX"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:border-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  data-ocid="profile.mobile.input"
-                />
-              </div>
-            </div>
-            <div>
-              <label
-                htmlFor="profile-goal"
-                className="text-white/50 text-xs font-semibold uppercase tracking-wider block mb-1.5"
-              >
-                Career Goal
-              </label>
-              <input
-                id="profile-goal"
-                type="text"
-                value={profile.careerGoal}
-                onChange={(e) => handleChange("careerGoal", e.target.value)}
-                disabled={!editing}
-                placeholder="e.g. Become a Full Stack Developer at a FAANG company"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:border-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                data-ocid="profile.career_goal.input"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="profile-linkedin"
-                className="text-white/50 text-xs font-semibold uppercase tracking-wider block mb-1.5"
-              >
-                LinkedIn URL
-              </label>
-              <input
-                id="profile-linkedin"
-                type="url"
-                value={profile.linkedinUrl}
-                onChange={(e) => handleChange("linkedinUrl", e.target.value)}
-                disabled={!editing}
-                placeholder="https://linkedin.com/in/yourprofile"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:border-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                data-ocid="profile.linkedin.input"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="profile-about"
-                className="text-white/50 text-xs font-semibold uppercase tracking-wider block mb-1.5"
-              >
-                About Me
-              </label>
-              <textarea
-                id="profile-about"
-                value={profile.aboutMe}
-                onChange={(e) => handleChange("aboutMe", e.target.value)}
-                disabled={!editing}
-                placeholder="Write a short bio about yourself, your skills, and career aspirations..."
-                rows={4}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed resize-none"
-                data-ocid="profile.about.textarea"
-              />
-            </div>
-            {editing && (
+                <Edit3 size={12} /> Edit
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={handleSave}
-                className="btn-primary flex items-center gap-2"
-                data-ocid="profile.save_button"
+                className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                data-ocid="profile.save.button"
               >
-                <Save size={16} /> Save Profile
+                <Save size={12} /> Save Changes
               </button>
             )}
+          </div>
+
+          <div className="space-y-4">
+            {(
+              [
+                {
+                  field: "fullName",
+                  label: "Full Name",
+                  placeholder: "Your full name",
+                },
+                {
+                  field: "mobile",
+                  label: "Mobile Number",
+                  placeholder: "+91-9876543210",
+                },
+                {
+                  field: "careerGoal",
+                  label: "Career Goal",
+                  placeholder: `e.g. ${streamDef.roles[0]?.name ?? "Software Engineer"} at a top company`,
+                },
+                {
+                  field: "linkedinUrl",
+                  label: "LinkedIn URL",
+                  placeholder: "https://linkedin.com/in/yourname",
+                },
+              ] as const
+            ).map(({ field, label, placeholder }) => (
+              <div key={field}>
+                <p className="label-dark">{label}</p>
+                {editing ? (
+                  <input
+                    type="text"
+                    className="input-dark w-full"
+                    value={profile[field]}
+                    placeholder={placeholder}
+                    onChange={(e) => handleChange(field, e.target.value)}
+                    data-ocid={`profile.${field}.input`}
+                  />
+                ) : (
+                  <p className="text-white text-sm py-2 px-3 rounded-xl bg-white/3 border border-white/6 min-h-[38px]">
+                    {profile[field] || (
+                      <span className="text-white/25">{placeholder}</span>
+                    )}
+                  </p>
+                )}
+              </div>
+            ))}
+
+            <div>
+              <p className="label-dark">About Me</p>
+              {editing ? (
+                <textarea
+                  className="input-dark w-full resize-none"
+                  rows={4}
+                  value={profile.aboutMe}
+                  placeholder="Write a brief professional summary..."
+                  onChange={(e) => handleChange("aboutMe", e.target.value)}
+                  data-ocid="profile.aboutMe.textarea"
+                />
+              ) : (
+                <p className="text-white text-sm py-2 px-3 rounded-xl bg-white/3 border border-white/6 min-h-[80px]">
+                  {profile.aboutMe || (
+                    <span className="text-white/25">
+                      Write a brief professional summary...
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>

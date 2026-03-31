@@ -1,6 +1,8 @@
 import { ChevronDown, Send, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { getUserStream } from "../utils/auth";
+import { getStreamById } from "../utils/streamData";
 
 interface Message {
   id: string;
@@ -12,74 +14,371 @@ interface Message {
 const STORAGE_KEY = "aiChatHistory";
 const MAX_MESSAGES = 50;
 
-const QUICK_CHIPS = [
-  "Resume tips",
-  "How to improve ATS score?",
-  "Best free certifications",
-  "Interview preparation",
-  "Career roadmap",
-  "Skill tracker help",
-  "Mock interview tips",
-  "View my profile",
-];
-
-function getAIResponse(input: string): string {
-  const q = input.toLowerCase();
-
-  if (/\b(hi|hello|hey|helo|hii)\b/.test(q)) {
-    return "Hello! I'm your AI Career Assistant 🤖 I can help with resume tips, ATS optimization, skill recommendations, certifications, interview prep, and career guidance. What would you like to know?";
+function getStreamQuickChips(stream: string): string[] {
+  switch (stream) {
+    case "mechanical":
+      return [
+        "How to prepare for core mechanical interviews?",
+        "Best CAD tools for beginners?",
+        "AutoCAD vs SolidWorks — which to learn first?",
+        "Mechanical engineering certifications",
+        "How to get into automobile sector?",
+      ];
+    case "electrical":
+      return [
+        "How to become an embedded engineer?",
+        "PLC vs Arduino — what to learn?",
+        "Best certifications for electrical engineers",
+        "VLSI vs Power Systems — which career path?",
+        "How to crack PSU exams?",
+      ];
+    case "mba":
+      return [
+        "How to crack MBA placement interviews?",
+        "What skills do Product Managers need?",
+        "Best resources for business analysis?",
+        "Digital marketing career path",
+        "How to become a product manager?",
+      ];
+    case "medical":
+      return [
+        "How to enter clinical research?",
+        "What is GCP certification?",
+        "Healthcare IT career path",
+        "Best certifications for medical professionals",
+        "Clinical Research vs Healthcare Administration",
+      ];
+    case "commerce":
+      return [
+        "CA vs CMA — which to choose?",
+        "How to prepare for banking exams?",
+        "Best financial modeling courses",
+        "GST certification value in career",
+        "Investment banking career path",
+      ];
+    case "civil":
+      return [
+        "AutoCAD Civil 3D vs Revit — which to learn?",
+        "How to get government civil engineering jobs?",
+        "STAAD Pro tutorial resources",
+        "Civil engineering certifications",
+        "How to become a structural engineer?",
+      ];
+    case "arts":
+      return [
+        "How to build a design portfolio?",
+        "Figma vs Adobe XD for beginners?",
+        "How to get freelance design clients?",
+        "UX research methods for beginners",
+        "Best free design learning resources",
+      ];
+    default: // cse
+      return [
+        "Resume tips",
+        "How to improve ATS score?",
+        "Best free certifications",
+        "Interview preparation",
+        "Career roadmap",
+        "Skill tracker help",
+        "Mock interview tips",
+        "View my profile",
+      ];
   }
+}
+
+function getStreamAIResponse(input: string, stream: string): string {
+  const q = input.toLowerCase();
+  const streamDef = getStreamById(stream);
+  const streamLabel = streamDef.label;
+
+  // General greetings
+  if (/\b(hi|hello|hey|helo|hii)\b/.test(q)) {
+    return `Hello! I'm your AI Career Assistant 🤖 I'm configured for ${streamLabel} careers. I can help with resume tips, ATS optimization, skill recommendations, certifications, interview prep, and career guidance. What would you like to know?`;
+  }
+
+  // Stream-specific responses
+  if (stream === "mechanical") {
+    if (/cad|autocad|solidworks|catia/.test(q)) {
+      return `📐 Top CAD Tools for Mechanical Engineers:
+• AutoCAD — 2D drafting (must-know)
+• SolidWorks — 3D modeling (industry standard)
+• CATIA — Aerospace/automotive design
+• ANSYS — FEA simulation
+• MATLAB/Simulink — system simulation
+
+Start with AutoCAD + SolidWorks for most core sector jobs.`;
+    }
+    if (/interview|core|mechanical/.test(q)) {
+      return `🎯 Core Mechanical Interview Topics:
+• Engineering Drawing & GD&T
+• Thermodynamics & Heat Transfer
+• Fluid Mechanics basics
+• Manufacturing Processes (casting, forging, welding)
+• Machine Design principles
+• Lean Manufacturing & Six Sigma
+• CAD tool proficiency
+
+Also prepare for aptitude tests for PSU/GATE exams.`;
+    }
+    if (/certif|course/.test(q)) {
+      return `🏆 Certifications for Mechanical Engineers:
+• SolidWorks CSWA/CSWP
+• AutoCAD Certified Professional
+• Six Sigma Green Belt (free on Coursera)
+• MATLAB Onramp (free at MathWorks)
+• Lean Manufacturing (free on Coursera)
+• CATIA V5 Certification (Dassault)
+
+These add real value to your resume!`;
+    }
+  }
+
+  if (stream === "electrical") {
+    if (/embedded|microcontroller|plc|arduino/.test(q)) {
+      return `💻 Embedded vs PLC Career Paths:
+• Embedded Engineering: C/C++, RTOS, Microcontrollers (ARM, AVR), PCB Design
+• PLC/SCADA Engineering: Ladder logic, Siemens TIA Portal, industrial automation
+
+For beginners: Start with Arduino → then Raspberry Pi → then industrial PLCs
+For career: RTOS + ARM Cortex M is most in-demand.`;
+    }
+    if (/vlsi|fpga|verilog/.test(q)) {
+      return `📱 VLSI Career Path:
+• Learn: Digital Electronics, Verilog/VHDL
+• Practice: Xilinx Vivado, ModelSim
+• FPGA programming on actual boards
+• Top companies: Intel, Qualcomm, MediaTek, NVIDIA
+• Certifications: Xilinx certification, Coursera VLSI courses
+
+Gate exam is the best entry path for PSU electrical jobs.`;
+    }
+  }
+
+  if (stream === "mba") {
+    if (/product.?manager|pm/.test(q)) {
+      return `📦 How to Become a Product Manager:
+1. Build domain knowledge in tech or business
+2. Learn: Agile, Jira, Roadmapping, A/B testing
+3. Practice: Mock PRDs, case studies, PM interviews
+4. Certifications: Google PM, Coursera Product Management
+5. Portfolio: Case studies of products you'd improve
+
+Interview tip: Use CIRCLES framework for product design questions.`;
+    }
+    if (/digital.?market|seo|social.?media/.test(q)) {
+      return `📊 Digital Marketing Career Path:
+• Start: Google Digital Garage (free cert)
+• Learn: SEO, SEM, Social Media Marketing
+• Tools: Google Analytics, HubSpot, SEMrush, Hootsuite
+• Practice: Build a blog or social page
+• Certifications: Google Ads, HubSpot, Meta Blueprint (all free)
+
+Freelancing is excellent entry point for freshers!`;
+    }
+    if (/business.?anal|ba|sql|tableau/.test(q)) {
+      return `📊 Business Analyst Skills to Master:
+• SQL — data querying (essential)
+• Excel — data analysis and reporting
+• Tableau/Power BI — visualization
+• BPMN — process modeling
+• Communication — stakeholder management
+• Certifications: CBAP (IIBA), Coursera Business Analysis`;
+    }
+  }
+
+  if (stream === "medical") {
+    if (/clinical.?research|gcp|trial/.test(q)) {
+      return `🦷 Clinical Research Career Path:
+• Learn GCP (Good Clinical Practice) — free ICH guidelines
+• Study Clinical Trial phases (I-IV)
+• Learn CTMS software (Medidata Rave)
+• Certifications: SCORECR, CCRP (SOCRA)
+• Entry roles: CRA, Clinical Data Associate, Site Coordinator
+
+Top companies: IQVIA, PPD, Syneos, Covance.`;
+    }
+    if (/medical.?cod|icd|cpt/.test(q)) {
+      return `📝 Medical Coding Career:
+• Learn: ICD-10-CM, CPT, HCPCS code sets
+• Certification: CPC (AAPC) — most recognized
+• Practice on: AAPC Mock Exams
+• Tools: 3M Encoder, Optum360
+• Work from home: Medical coding is highly remote-friendly!
+
+Freshers can get certified in 3-6 months.`;
+    }
+  }
+
+  if (stream === "commerce") {
+    if (/ca|cma|accountant|chartered/.test(q)) {
+      return `💼 CA vs CMA — Career Comparison:
+
+CA (Chartered Accountant):
+• More rigorous, 3-4 years
+• Audit, taxation, financial reporting
+• Best for Big 4, corporate finance
+
+CMA (Cost Management Accountant):
+• Focus on costing and management accounting
+• Manufacturing and industry focused
+• 3-year program
+
+Both are excellent! CA has broader scope.`;
+    }
+    if (/banking|ibps|bank.?exam/.test(q)) {
+      return `🏦 Banking Exam Preparation:
+• IBPS PO/Clerk — most common exam
+• SBI PO/Clerk — prestigious
+• Topics: English, Reasoning, Quantitative Aptitude, GK/Banking Awareness
+• Best resources: Adda247, Oliveboard, Testbook
+• Daily practice: 2-3 mock tests
+
+Financial products knowledge + communication skills are key.`;
+    }
+  }
+
+  if (stream === "arts") {
+    if (/figma|ux|ui|design/.test(q)) {
+      return `🎨 UI/UX Design Career Path:
+• Learn: Figma (free), Adobe XD, wireframing
+• Study: UX research, user journey maps, design systems
+• Portfolio: 3-5 strong case studies on Behance/Dribbble
+• Certifications: Google UX Design (Coursera, free audit)
+
+Figma is the industry standard — learn it first!
+Showcase problem-solving, not just pretty screens.`;
+    }
+    if (/portfolio|behance|dribbble|freelanc/.test(q)) {
+      return `💼 Building a Creative Portfolio:
+• Use Behance or personal website
+• Show 3-5 complete projects with process
+• Include: research → wireframe → prototype → final
+• Write case studies explaining your decisions
+• Keep updating with new work
+
+Freelancing: Upwork, Fiverr, and 99designs are good starting points.`;
+    }
+  }
+
+  // Universal responses
   if (
-    /resume.*(tip|advice|help|kaise|improve|better|write|format|banana)/.test(
-      q,
-    ) ||
+    /resume.*(tip|advice|help|improve|better|write|format)/.test(q) ||
     /tip.*resume/.test(q)
   ) {
-    return "📄 ATS-Friendly Resume Tips:\n• Use bullet points for clarity\n• Match keywords from the job description\n• Keep it 1–2 pages\n• Use standard headings: Education, Experience, Skills, Projects\n• Avoid images, tables, and fancy fonts\n• Use a clean single-column layout\n• Quantify achievements (e.g., 'Improved performance by 30%')";
-  }
-  if (/ats.*(score|improve|optimize|increase|kaise|kya)|score.*ats/.test(q)) {
-    return "📊 How ATS Score Works:\n• ATS scans for keywords matching the job description\n• Use proper section headings (not creative names)\n• Avoid images, columns, and tables\n• Save resume as PDF or DOCX\n• Aim for 70+ score to pass ATS filters\n\nUse the ATS Analyzer page on this platform to check your score!";
-  }
-  if (/\b(skill|learn|technology|tech|kya seekhu|kya sikhun)/.test(q)) {
-    if (/data.?sci|machine.?learn|ml|ai/.test(q)) {
-      return "🤖 Top Skills for AI/ML & Data Science:\n• Python, NumPy, Pandas, Matplotlib\n• Scikit-learn, TensorFlow, PyTorch\n• SQL & NoSQL Databases\n• Statistics & Linear Algebra\n• Jupyter Notebook, Google Colab\n• Tableau / Power BI for visualization";
-    }
-    if (/cyber|security|hacking|ethical/.test(q)) {
-      return "🔒 Top Cybersecurity Skills:\n• Networking fundamentals (TCP/IP, DNS)\n• Linux OS & command line\n• Ethical Hacking & Penetration Testing\n• OWASP Top 10 vulnerabilities\n• Kali Linux, Wireshark, Metasploit\n• Certifications: CEH, CompTIA Security+, CISSP";
-    }
-    return "💻 Top Web Development Skills:\n• HTML, CSS, JavaScript (must-have)\n• React.js / Next.js (Frontend)\n• Node.js / Express (Backend)\n• MongoDB / MySQL / PostgreSQL\n• Git & GitHub\n• REST APIs & JSON\n• Responsive Design & Tailwind CSS";
-  }
-  if (
-    /interview.*(prep|practice|tips|kaise|ready|question)|interview/.test(q)
-  ) {
-    return "🎯 Interview Preparation Guide:\n• Practice DSA on LeetCode / HackerRank daily\n• Review system design basics (for SDE roles)\n• Prepare STAR method answers for behavioral Qs\n• Know your resume inside-out\n• Practice common HR questions\n• Mock interviews on Pramp or interviewing.io\n• Research the company before the interview";
-  }
-  if (/certif|course|free.*(learn|course)|google.*cert|aws.*cert/.test(q)) {
-    return "🏆 Best Free Certifications:\n• Google Digital Garage – Digital Marketing\n• AWS Skill Builder – Cloud fundamentals\n• Microsoft Learn – Azure, Power BI, more\n• IBM SkillsBuild – AI, Data, Cybersecurity\n• freeCodeCamp – Web Dev, Data Analysis\n• Coursera (audit free) – Top university courses\n• NPTEL – IIT/IISc courses (free)\n• Cisco Networking Academy – Networking/Security\n\nAll are free and recognized by employers!";
-  }
-  if (/job|internship|placement|apply|naukri|linkedin|portal/.test(q)) {
-    return "💼 Job Search Strategy:\n• Best Platforms: LinkedIn, Internshala, Naukri, Indeed, Wellfound (startups), AngelList\n• Apply to 5–10 jobs per day with customized resumes\n• Use referrals — they have 10x higher success rate\n• Set up job alerts for your target roles\n• Follow target companies on LinkedIn\n• Optimize your LinkedIn profile with keywords";
-  }
-  if (/project|portfolio|build|github|showcase/.test(q)) {
-    return "🚀 Strong Portfolio Projects for CSE:\n• Full-stack Web App (React + Node.js + DB)\n• REST API with Authentication\n• ML/AI Model (image classification, chatbot)\n• Mobile App (React Native / Flutter)\n• Open Source contributions on GitHub\n\nHosting: Vercel, Netlify, Render (all free)\nAlways add a README and live demo link!";
-  }
-  if (/skill.?tracker|track.?skill/.test(q)) {
-    return "\ud83d\udcca Skill Progress Tracker:\nGo to Skill Tracker in the sidebar to:\n\u2022 Add any skill you're learning\n\u2022 Set status: Learning (33%) / Practicing (66%) / Completed (100%)\n\u2022 See visual progress bars for each skill\n\u2022 Get notified when you complete a skill!";
-  }
-  if (/mock.?interview|practice.?interview/.test(q)) {
-    return "\ud83c\udfa4 Mock Interview Mode:\nGo to Mock Interview (/mock-interview):\n\u2022 10 mixed HR + Technical questions\n\u2022 60-second timer per question\n\u2022 Type answer, then see model answer & tips\n\u2022 Summary with score at the end\n\nRegular practice = better confidence!";
-  }
-  if (/\bmy profile\b|\bprofile page\b|view.*profile/.test(q)) {
-    return "\ud83d\udc64 Your Profile Page (/profile):\n\u2022 Set Full Name, Mobile, Career Goal\n\u2022 Add your LinkedIn URL\n\u2022 Write your About Me section\n\u2022 See stats: Skills, Projects, Certifications\n\nYour profile syncs with your Resume Builder automatically!";
-  }
-  if (/interview.?prep|preparation.?hub/.test(q)) {
-    return "\ud83c\udfaf Interview Prep Hub (/interview-prep):\n4 Question Banks:\n\u2022 HR Questions - Tell me about yourself...\n\u2022 Technical - OOP, REST APIs, Docker...\n\u2022 Coding - Linked list, binary search...\n\u2022 System Design - URL shortener, CAP theorem...\n\nUse Generate Random Question for surprise practice!";
-  }
-  if (/roadmap|path|career|guide|step|kahan se shuru/.test(q)) {
-    return "🗺️ Career Roadmap for CSE Students:\n\n1️⃣ Learn Fundamentals – Programming, DSA, CS basics\n2️⃣ Pick a Domain – Web Dev, AI/ML, Cybersecurity, etc.\n3️⃣ Build 3–5 Projects – Show real-world skills\n4️⃣ Earn Certifications – Google, AWS, Microsoft\n5️⃣ Create Resume – ATS-friendly, 1 page for freshers\n6️⃣ Practice Interviews – LeetCode, mock interviews\n7️⃣ Apply for Jobs – LinkedIn, Naukri, Internshala";
+    return `📄 ATS-Friendly Resume Tips for ${streamLabel}:
+• Highlight domain-specific technical skills prominently
+• Use bullet points with action verbs
+• Match keywords from job descriptions in your field
+• Keep it 1-2 pages
+• Use standard headings: Education, Experience, Skills, Projects
+• Quantify achievements where possible
+• Avoid images, tables, and fancy fonts for ATS compatibility`;
   }
 
-  return "🤔 I can help you with:\n• 📄 Resume tips & formatting\n• 📊 ATS score improvement\n• 💻 Skill recommendations\n• 🏆 Free certifications\n• 🎯 Interview preparation\n• 💼 Job search strategy\n• 🚀 Portfolio projects\n• 🗺️ Career roadmap\n\nPlease ask a specific question and I'll guide you!";
+  if (/ats.*(score|improve|optimize|increase)|score.*ats/.test(q)) {
+    const keywords = getStreamById(stream).atsKeywords.slice(0, 6).join(", ");
+    return `📊 ATS Score Optimization for ${streamLabel}:
+• Key keywords for your field: ${keywords}
+• Use proper section headings
+• Avoid images, columns, and tables
+• Save resume as PDF
+• Aim for 70+ score to pass ATS filters
+
+Use the ATS Analyzer page to check your score!`;
+  }
+
+  if (/certif|course|free.*(learn|course)/.test(q)) {
+    return `🏆 Best Free Certifications for ${streamLabel}:
+• Coursera (audit free) — domain-specific courses
+• Google Digital Garage — business/digital skills
+• Microsoft Learn — tech certifications
+• NPTEL — IIT/IISc courses (all domains)
+• LinkedIn Learning — professional skills
+• Domain-specific platforms based on your stream
+
+Check the Free Certifications page for curated links!`;
+  }
+
+  if (/job|internship|placement|apply|portal/.test(q)) {
+    const portals = getStreamById(stream)
+      .jobPortals.map((p) => p.name)
+      .join(", ");
+    return `💼 Job Search Strategy for ${streamLabel}:
+• Best platforms for your stream: ${portals}
+• Apply to 5-10 jobs per day with tailored resumes
+• Use referrals — they have 10x higher success rate
+• Set up job alerts for your target roles
+• Check the Jobs & Internships page for direct links!`;
+  }
+
+  if (/interview.*(prep|practice|tips|ready|question)|interview/.test(q)) {
+    return `🎯 Interview Preparation Guide for ${streamLabel}:
+• Research domain-specific technical topics
+• Prepare STAR method answers for behavioral questions
+• Practice common HR questions
+• Know your resume inside-out
+• Research the company before the interview
+• Use Mock Interview Mode on this platform for practice!
+
+Check Interview Prep Hub for curated question banks.`;
+  }
+
+  if (/skill|learn|technology|tech/.test(q)) {
+    const topSkills =
+      getStreamById(stream).roles[0]?.requiredSkills.slice(0, 5).join(", ") ??
+      "domain skills";
+    return `📚 Top Skills to Master for ${streamLabel}:
+• Core skills: ${topSkills}
+• Check Role Eligibility page for detailed skill requirements
+• Use Learning Resources page for free tutorials & certifications
+• Track your progress in Skill Tracker
+
+Start with foundational skills before advancing to specialized tools.`;
+  }
+
+  if (/roadmap|path|career|guide|step/.test(q)) {
+    return `🗺️ Career Roadmap for ${streamLabel}:
+
+1️⃣ Learn Fundamentals — core concepts of your domain
+2️⃣ Master Key Tools — industry-standard software/tools
+3️⃣ Build Projects — show real-world problem solving
+4️⃣ Earn Certifications — domain-recognized certificates
+5️⃣ Create Resume — ATS-friendly, highlight domain keywords
+6️⃣ Practice Interviews — technical + behavioral rounds
+7️⃣ Apply Strategically — use stream-specific portals
+
+Check the Career Roadmap page for a visual step-by-step guide!`;
+  }
+
+  if (/skill.?tracker|track.?skill/.test(q)) {
+    return `📊 Skill Progress Tracker:
+Go to Skill Tracker in the sidebar to:
+• Add skills you're learning
+• Set status: Learning (33%) / Practicing (66%) / Completed (100%)
+• See visual progress bars
+• Track your ${streamLabel} skill development!`;
+  }
+
+  if (/mock.?interview|practice.?interview/.test(q)) {
+    return `🎤 Mock Interview Mode:
+Go to Mock Interview (/mock-interview):
+• HR + Technical questions
+• 60-second timer per question
+• Type your answer, then see model answer
+• Get feedback and score at the end
+
+Regular practice = better confidence in real interviews!`;
+  }
+
+  return `🤔 I'm your AI Career Assistant for ${streamLabel}! I can help with:
+• 📄 Resume tips & ATS optimization
+• 📊 Skill recommendations for your domain
+• 🏆 Free certifications & learning resources
+• 🎯 Interview preparation
+• 💼 Job search strategy
+• 🗺️ Career roadmap guidance
+
+Please ask a specific question and I'll guide you!`;
 }
 
 function loadHistory(): Message[] {
@@ -111,6 +410,10 @@ export default function AIAssistant() {
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const userStream = getUserStream();
+  const streamDef = getStreamById(userStream);
+  const quickChips = getStreamQuickChips(userStream);
 
   useEffect(() => {
     if (open) {
@@ -146,7 +449,7 @@ export default function AIAssistant() {
     setTimeout(
       () => {
         setTyping(false);
-        addMessage("assistant", getAIResponse(q));
+        addMessage("assistant", getStreamAIResponse(q, userStream));
       },
       700 + Math.random() * 400,
     );
@@ -251,7 +554,9 @@ export default function AIAssistant() {
                   <p className="text-white font-semibold text-sm">
                     AI Career Assistant
                   </p>
-                  <p className="text-purple-200 text-xs">Always here to help</p>
+                  <p className="text-purple-200 text-xs">
+                    {streamDef.label} specialist
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -296,11 +601,11 @@ export default function AIAssistant() {
                       AI Career Assistant
                     </p>
                     <p className="text-purple-300 text-xs mt-1">
-                      Ask me anything about your career!
+                      Specialized for {streamDef.label}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 justify-center">
-                    {QUICK_CHIPS.map((chip) => (
+                    {quickChips.map((chip) => (
                       <button
                         key={chip}
                         type="button"
@@ -413,7 +718,7 @@ export default function AIAssistant() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about resume, jobs, skills..."
+                placeholder={`Ask about ${streamDef.label} careers...`}
                 className="flex-1 bg-white/5 border border-purple-800/50 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-purple-400/60 outline-none focus:border-purple-500 transition-colors"
                 data-ocid="ai_assistant.input"
               />

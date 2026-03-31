@@ -163,7 +163,6 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-time setup
   useEffect(() => {
-    // Apply this user's saved theme preference on mount
     const userDark = getDarkMode();
     setDarkModeState(userDark);
     setDarkMode(userDark);
@@ -225,7 +224,6 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
       {/* Notification overlay */}
       {notifOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-[999]"
             style={{
@@ -238,7 +236,6 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
             tabIndex={-1}
             aria-label="Close notifications"
           />
-          {/* Panel */}
           <div
             className="fixed top-[70px] right-5 w-80 glass-card shadow-2xl z-[1000] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
             data-ocid="nav.notifications.popover"
@@ -364,6 +361,7 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
               <span className="text-orange-400/60 text-xs ml-auto">🔥</span>
             </div>
           )}
+
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5">
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"

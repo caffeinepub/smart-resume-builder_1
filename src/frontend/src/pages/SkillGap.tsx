@@ -1,27 +1,49 @@
-import { BookOpen, CheckCircle2, ChevronDown, XCircle } from "lucide-react";
+import {
+  BookOpen,
+  CheckCircle2,
+  ChevronDown,
+  ExternalLink,
+  RefreshCw,
+  XCircle,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import AppShell from "../components/AppShell";
-import { ROLES, getRoleEligibility } from "../utils/roleData";
+import { getUserStream } from "../utils/auth";
 import {
   loadCareerProfile,
   loadResume,
   saveCareerProfile,
 } from "../utils/storage";
+import {
+  getStreamById,
+  getStreamRoleEligibility,
+  getStreamRoles,
+  getStreamSkillResource,
+} from "../utils/streamData";
 
 export default function SkillGap() {
   const resume = loadResume();
   const careerProfile = loadCareerProfile();
+  const userStream = getUserStream();
+  const streamDef = getStreamById(userStream);
+  const streamRoles = getStreamRoles(userStream);
+
+  const defaultRole = careerProfile?.targetRole ?? streamRoles[0]?.name ?? "";
   const [selectedRole, setSelectedRole] = useState(
-    careerProfile?.targetRole ?? "Frontend Developer",
+    streamRoles.find((r) => r.name === defaultRole)
+      ? defaultRole
+      : (streamRoles[0]?.name ?? ""),
   );
 
   const userSkills = resume?.skills ?? [];
-  const analysis = useMemo(
-    () => getRoleEligibility(userSkills, selectedRole),
-    [userSkills, selectedRole],
-  );
-  const roleData = ROLES[selectedRole];
+  const selectedRoleData = streamRoles.find((r) => r.name === selectedRole);
+
+  const analysis = useMemo(() => {
+    if (!selectedRoleData)
+      return { eligible: false, matchPercent: 0, matched: [], missing: [] };
+    return getStreamRoleEligibility(userSkills, selectedRoleData);
+  }, [userSkills, selectedRoleData]);
 
   const addToLearningPlan = () => {
     const current = loadCareerProfile();
@@ -43,11 +65,25 @@ export default function SkillGap() {
   return (
     <AppShell title="Skill Gap" subtitle="See what skills you need">
       <div className="max-w-5xl mx-auto" data-ocid="skill_gap.page">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white">Skill Gap Analysis</h1>
-          <p className="text-white/40 text-sm mt-0.5">
-            Compare your skills against target role requirements
-          </p>
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              Skill Gap Analysis
+            </h1>
+            <p className="text-white/40 text-sm mt-0.5">
+              Compare your skills against target role requirements
+            </p>
+          </div>
+          <span
+            className="text-sm font-medium px-3 py-1.5 rounded-full border"
+            style={{
+              color: streamDef.color,
+              background: `${streamDef.color}15`,
+              borderColor: `${streamDef.color}35`,
+            }}
+          >
+            {streamDef.label}
+          </span>
         </div>
 
         {/* Role selector */}
@@ -60,13 +96,13 @@ export default function SkillGap() {
               onChange={(e) => setSelectedRole(e.target.value)}
               className="input-dark w-full appearance-none pr-10"
             >
-              {Object.keys(ROLES).map((role) => (
+              {streamRoles.map((role) => (
                 <option
-                  key={role}
-                  value={role}
+                  key={role.name}
+                  value={role.name}
                   style={{ background: "#0B1236" }}
                 >
-                  {role}
+                  {role.name}
                 </option>
               ))}
             </select>
@@ -77,7 +113,7 @@ export default function SkillGap() {
           </div>
         </div>
 
-        {roleData && (
+        {selectedRoleData && (
           <>
             {/* Summary bar */}
             <div
@@ -90,7 +126,7 @@ export default function SkillGap() {
                     {selectedRole}
                   </h2>
                   <p className="text-white/40 text-sm">
-                    {roleData.description}
+                    {selectedRoleData.description}
                   </p>
                 </div>
                 <div className="text-right">
@@ -104,7 +140,8 @@ export default function SkillGap() {
                     {analysis.matchPercent}%
                   </div>
                   <div className="text-white/40 text-xs">
-                    {analysis.matched.length}/{roleData.required.length} skills
+                    {analysis.matched.length}/
+                    {selectedRoleData.requiredSkills.length} skills
                   </div>
                 </div>
               </div>
@@ -202,31 +239,100 @@ export default function SkillGap() {
               </div>
             </div>
 
+            {/* Actions */}
             {analysis.missing.length > 0 && (
-              <div
-                className="glass-card p-5 flex items-center justify-between"
-                data-ocid="skill_gap.learning_plan.panel"
-              >
-                <div>
-                  <h3 className="text-white font-semibold">
-                    Add to Learning Plan
-                  </h3>
-                  <p className="text-white/40 text-sm">
-                    Save {analysis.missing.length} missing skills to track your
-                    progress
-                  </p>
-                </div>
+              <div className="flex flex-wrap gap-3 mb-6">
                 <button
                   type="button"
                   onClick={addToLearningPlan}
-                  className="btn-primary flex items-center gap-2"
-                  data-ocid="skill_gap.add_plan.button"
+                  className="btn-primary flex items-center gap-2 py-2.5 px-5"
+                  data-ocid="skill_gap.add_to_plan.button"
                 >
-                  <BookOpen size={15} /> Add {analysis.missing.length} Skills
+                  <BookOpen size={15} /> Add Missing Skills to Learning Plan
                 </button>
               </div>
             )}
+
+            {/* Improvement Suggestions from stream resources */}
+            {analysis.missing.length > 0 && (
+              <div
+                className="glass-card p-5"
+                data-ocid="skill_gap.suggestions.panel"
+              >
+                <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                  <RefreshCw size={16} style={{ color: streamDef.color }} />
+                  Learning Resources for Missing Skills
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {analysis.missing.slice(0, 4).map((skill) => {
+                    const resource = getStreamSkillResource(userStream, skill);
+                    return (
+                      <div
+                        key={skill}
+                        className="p-4 rounded-xl border border-white/8 bg-white/3"
+                      >
+                        <p className="text-white font-medium text-sm mb-2">
+                          {skill}
+                        </p>
+                        {resource ? (
+                          <div className="flex flex-wrap gap-2">
+                            <a
+                              href={resource.youtube}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-red-400 text-xs hover:text-red-300"
+                            >
+                              <ExternalLink size={11} /> YouTube
+                            </a>
+                            <a
+                              href={resource.docs}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-blue-400 text-xs hover:text-blue-300"
+                            >
+                              <ExternalLink size={11} /> Docs
+                            </a>
+                            <a
+                              href={resource.practice}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-green-400 text-xs hover:text-green-300"
+                            >
+                              <ExternalLink size={11} /> Practice
+                            </a>
+                          </div>
+                        ) : (
+                          <a
+                            href="/learning-resources"
+                            className="text-purple-400 text-xs hover:text-purple-300"
+                          >
+                            View learning resources →
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </>
+        )}
+
+        {streamRoles.length === 0 && (
+          <div
+            className="glass-card p-8 text-center"
+            data-ocid="skill_gap.empty_state"
+          >
+            <p className="text-white/40">
+              No roles found for your stream. Please select a stream first.
+            </p>
+            <a
+              href="/stream-select"
+              className="btn-primary mt-4 inline-flex items-center gap-2"
+            >
+              Select Stream
+            </a>
+          </div>
         )}
       </div>
     </AppShell>

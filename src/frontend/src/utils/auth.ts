@@ -51,3 +51,28 @@ export function getUserKey(baseKey: string): string {
   const phone = getCurrentUserPhone();
   return phone ? `${baseKey}_${phone}` : baseKey;
 }
+
+// ============================================================
+// Stream helpers — per-user academic stream
+// ============================================================
+
+export function getStreamKey(): string {
+  const phone = getCurrentUserPhone();
+  return phone ? `stream_${phone}` : "stream_default";
+}
+
+export function getUserStream(): string {
+  try {
+    return localStorage.getItem(getStreamKey()) ?? "cse";
+  } catch {
+    return "cse";
+  }
+}
+
+export function saveUserStream(stream: string): void {
+  try {
+    localStorage.setItem(getStreamKey(), stream);
+  } catch {
+    // ignore
+  }
+}
