@@ -10,6 +10,8 @@ import { useEffect } from "react";
 import AIAssistant from "./components/AIAssistant";
 import AuthGuard from "./components/AuthGuard";
 import ATSAnalyzer from "./pages/ATSAnalyzer";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminLoginPage from "./pages/AdminLoginPage";
 import CareerRoadmap from "./pages/CareerRoadmap";
 import Certifications from "./pages/Certifications";
 import Dashboard from "./pages/Dashboard";
@@ -20,14 +22,26 @@ import LearningResources from "./pages/LearningResources";
 import LoginPage from "./pages/LoginPage";
 import MockInterview from "./pages/MockInterview";
 import MockTests from "./pages/MockTests";
+import ProfessorDashboard from "./pages/ProfessorDashboard";
+import ProfessorLoginPage from "./pages/ProfessorLoginPage";
+import ProfessorRegisterPage from "./pages/ProfessorRegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import ProjectIdeas from "./pages/ProjectIdeas";
+import RecruiterDashboard from "./pages/RecruiterDashboard";
+import RecruiterLoginPage from "./pages/RecruiterLoginPage";
+import RecruiterRegisterPage from "./pages/RecruiterRegisterPage";
 import RegisterPage from "./pages/RegisterPage";
 import ResumeBuilder from "./pages/ResumeBuilder";
 import RoleEligibility from "./pages/RoleEligibility";
 import SkillGap from "./pages/SkillGap";
 import SkillTracker from "./pages/SkillTracker";
+import StreamSelectPage from "./pages/StreamSelectPage";
 import { initDarkMode } from "./utils/extras";
+import {
+  getCurrentRole,
+  getProfessorAuth,
+  getRecruiterAuth,
+} from "./utils/roleAuth";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -54,12 +68,67 @@ const registerRoute = createRoute({
   component: RegisterPage,
 });
 
+// Student auth guard
 const guard = (C: React.ComponentType) => () => (
   <AuthGuard>
     <C />
   </AuthGuard>
 );
 
+// Admin auth guard
+function AdminAuthGuard({ children }: { children: React.ReactNode }) {
+  const role = localStorage.getItem("currentRole");
+  if (role !== "admin") {
+    // Redirect handled via useEffect in AdminDashboard itself
+    return null;
+  }
+  return <>{children}</>;
+}
+
+// Professor auth guard
+function ProfessorAuthGuard({ children }: { children: React.ReactNode }) {
+  const role = getCurrentRole();
+  const auth = getProfessorAuth();
+  if (role !== "professor" || !auth) {
+    return null;
+  }
+  return <>{children}</>;
+}
+
+// Recruiter auth guard
+function RecruiterAuthGuard({ children }: { children: React.ReactNode }) {
+  const role = getCurrentRole();
+  const auth = getRecruiterAuth();
+  if (role !== "recruiter" || !auth) {
+    return null;
+  }
+  return <>{children}</>;
+}
+
+const adminGuard = (C: React.ComponentType) => () => (
+  <AdminAuthGuard>
+    <C />
+  </AdminAuthGuard>
+);
+
+const professorGuard = (C: React.ComponentType) => () => (
+  <ProfessorAuthGuard>
+    <C />
+  </ProfessorAuthGuard>
+);
+
+const recruiterGuard = (C: React.ComponentType) => () => (
+  <RecruiterAuthGuard>
+    <C />
+  </RecruiterAuthGuard>
+);
+
+// Existing student routes
+const streamSelectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/stream-select",
+  component: guard(StreamSelectPage),
+});
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboard",
@@ -136,10 +205,53 @@ const profileRoute = createRoute({
   component: guard(ProfilePage),
 });
 
+// New role-specific routes
+const professorLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/professor-login",
+  component: ProfessorLoginPage,
+});
+const professorRegisterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/professor-register",
+  component: ProfessorRegisterPage,
+});
+const professorDashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/professor-dashboard",
+  component: professorGuard(ProfessorDashboard),
+});
+const recruiterLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/recruiter-login",
+  component: RecruiterLoginPage,
+});
+const recruiterRegisterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/recruiter-register",
+  component: RecruiterRegisterPage,
+});
+const recruiterDashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/recruiter-dashboard",
+  component: recruiterGuard(RecruiterDashboard),
+});
+const adminLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin-login",
+  component: AdminLoginPage,
+});
+const adminDashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin-dashboard",
+  component: adminGuard(AdminDashboard),
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   loginRoute,
   registerRoute,
+  streamSelectRoute,
   dashboardRoute,
   resumeBuilderRoute,
   atsAnalyzerRoute,
@@ -155,6 +267,15 @@ const routeTree = rootRoute.addChildren([
   interviewPrepRoute,
   mockInterviewRoute,
   profileRoute,
+  // New role routes
+  professorLoginRoute,
+  professorRegisterRoute,
+  professorDashboardRoute,
+  recruiterLoginRoute,
+  recruiterRegisterRoute,
+  recruiterDashboardRoute,
+  adminLoginRoute,
+  adminDashboardRoute,
 ]);
 
 const router = createRouter({ routeTree });

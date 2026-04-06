@@ -1,12 +1,14 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Brain, Phone } from "lucide-react";
+import { ArrowLeft, Brain, Phone } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
   getRegisteredUsers,
+  getUserStream,
   isPhoneRegistered,
   setStoredAuth,
 } from "../utils/auth";
+import { setCurrentRole } from "../utils/roleAuth";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -28,8 +30,10 @@ export default function LoginPage() {
       const users = getRegisteredUsers();
       const name = users[trimmed] ?? "User";
       setStoredAuth({ phone: trimmed, name, token: `tok_${Date.now()}` });
-      toast.success(`Welcome back, ${name}! 🚀`);
-      navigate({ to: "/dashboard" });
+      setCurrentRole("student");
+      toast.success(`Welcome back, ${name}! \uD83D\uDE80`);
+      const stream = getUserStream();
+      navigate({ to: stream ? "/dashboard" : "/stream-select" });
       setLoading(false);
     }, 300);
   };
@@ -43,6 +47,18 @@ export default function LoginPage() {
           "radial-gradient(ellipse at 20% 50%, rgba(124,92,255,0.2) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(53,208,199,0.12) 0%, transparent 50%)",
       }}
     >
+      {/* Back to role selection */}
+      <div className="w-full max-w-md mb-4">
+        <Link
+          to="/"
+          className="flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm transition-colors"
+          data-ocid="login.back.link"
+        >
+          <ArrowLeft size={15} />
+          Back to Role Selection
+        </Link>
+      </div>
+
       {/* Logo */}
       <div className="flex items-center gap-2.5 mb-8">
         <div
@@ -56,13 +72,13 @@ export default function LoginPage() {
             SMARTRESUME AI
           </span>
           <p className="text-white/40 text-[10px] uppercase tracking-widest font-medium">
-            Career Builder
+            Student Portal
           </p>
         </div>
       </div>
 
       <div className="glass-card w-full max-w-md p-8" data-ocid="login.modal">
-        <h2 className="text-2xl font-bold text-white mb-1">Sign In</h2>
+        <h2 className="text-2xl font-bold text-white mb-1">Student Sign In</h2>
         <p className="text-white/50 text-sm mb-6">
           Enter your registered mobile number to sign in
         </p>
@@ -112,7 +128,7 @@ export default function LoginPage() {
       </div>
 
       <p className="mt-8 text-white/20 text-xs text-center">
-        © {new Date().getFullYear()}. Built with ❤️ using{" "}
+        \u00a9 {new Date().getFullYear()}. Built with \u2764\uFE0F using{" "}
         <a
           href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
           target="_blank"

@@ -10,8 +10,14 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import AppShell from "../components/AppShell";
+import { getUserStream } from "../utils/auth";
 import { CAREER_ROADMAPS } from "../utils/roleData";
 import { loadCareerProfile, saveCareerProfile } from "../utils/storage";
+import {
+  type StreamId,
+  getStreamById,
+  getStreamRoles,
+} from "../utils/streamData";
 
 const ICON_MAP: Record<
   string,
@@ -27,18 +33,117 @@ const ICON_MAP: Record<
   Briefcase,
 };
 
-const ROLE_OPTIONS = Object.keys(CAREER_ROADMAPS);
+interface RoadmapItem {
+  id: string;
+  label: string;
+  type: "skill" | "project" | "task";
+}
+
+interface RoadmapPhase {
+  title: string;
+  icon: string;
+  color: string;
+  items: RoadmapItem[];
+}
+
+function buildStreamRoadmap(roleId: string, skills: string[]): RoadmapPhase[] {
+  const slug = roleId.toLowerCase().replace(/\s+/g, "-");
+  return [
+    {
+      title: "Phase 1: Foundation Skills",
+      icon: "BookOpen",
+      color: "#7C5CFF",
+      items: skills.slice(0, 4).map((s, i) => ({
+        id: `${slug}-skill-${i}`,
+        label: `Learn ${s}`,
+        type: "skill" as const,
+      })),
+    },
+    {
+      title: "Phase 2: Build & Practice",
+      icon: "Code2",
+      color: "#35D0C7",
+      items: [
+        {
+          id: `${slug}-project-1`,
+          label: `Build a ${roleId} practice project`,
+          type: "project" as const,
+        },
+        {
+          id: `${slug}-project-2`,
+          label: "Document your projects on GitHub",
+          type: "project" as const,
+        },
+        {
+          id: `${slug}-project-3`,
+          label: "Contribute to an open-source project",
+          type: "project" as const,
+        },
+      ],
+    },
+    {
+      title: "Phase 3: Job Readiness",
+      icon: "Briefcase",
+      color: "#39D98A",
+      items: [
+        {
+          id: `${slug}-prep-1`,
+          label: "Prepare your resume and portfolio",
+          type: "task" as const,
+        },
+        {
+          id: `${slug}-prep-2`,
+          label: "Practice mock interviews",
+          type: "task" as const,
+        },
+        {
+          id: `${slug}-prep-3`,
+          label: "Apply to relevant job listings",
+          type: "task" as const,
+        },
+        {
+          id: `${slug}-prep-4`,
+          label: "Network on LinkedIn and attend career fairs",
+          type: "task" as const,
+        },
+      ],
+    },
+  ];
+}
 
 export default function CareerRoadmap() {
+  const userStream = getUserStream();
+  const streamDef = getStreamById(userStream as StreamId);
+  const streamRoles = getStreamRoles(userStream as StreamId);
+
   const profile = loadCareerProfile();
-  const [selectedRole, setSelectedRole] = useState(
-    profile?.targetRole ?? ROLE_OPTIONS[0],
+
+  // Build role options: stream roles first, then legacy CAREER_ROADMAPS roles
+  const streamRoleNames = streamRoles.map((r) => r.name);
+  const legacyRoleNames = Object.keys(CAREER_ROADMAPS).filter(
+    (r) => !streamRoleNames.includes(r),
   );
+  const ALL_ROLE_OPTIONS = [...streamRoleNames, ...legacyRoleNames];
+
+  const defaultRole =
+    profile?.targetRole && ALL_ROLE_OPTIONS.includes(profile.targetRole)
+      ? profile.targetRole
+      : (ALL_ROLE_OPTIONS[0] ?? "");
+
+  const [selectedRole, setSelectedRole] = useState(defaultRole);
   const [completed, setCompleted] = useState<Set<string>>(
     new Set(profile?.completedSteps ?? []),
   );
 
-  const roadmap = CAREER_ROADMAPS[selectedRole] ?? [];
+  // Build roadmap: use CAREER_ROADMAPS if it exists, otherwise build from stream data
+  const getRoadmap = (role: string): RoadmapPhase[] => {
+    if (CAREER_ROADMAPS[role]) return CAREER_ROADMAPS[role];
+    const streamRole = streamRoles.find((r) => r.name === role);
+    if (streamRole) return buildStreamRoadmap(role, streamRole.requiredSkills);
+    return [];
+  };
+
+  const roadmap = getRoadmap(selectedRole);
 
   const toggleStep = (id: string) => {
     setCompleted((prev) => {
@@ -46,12 +151,11 @@ export default function CareerRoadmap() {
       if (next.has(id)) next.delete(id);
       else next.add(id);
       const current = loadCareerProfile();
+      const allItems = roadmap.flatMap((p) => p.items);
       saveCareerProfile({
         targetRole: selectedRole,
         completedSteps: Array.from(next),
-        readinessScore: Math.round(
-          (next.size / roadmap.flatMap((p) => p.items).length) * 100,
-        ),
+        readinessScore: Math.round((next.size / allItems.length) * 100),
         learningPlan: current?.learningPlan ?? [],
       });
       return next;
@@ -68,11 +172,23 @@ export default function CareerRoadmap() {
   return (
     <AppShell title="Career Roadmap" subtitle="Your step-by-step guide">
       <div className="max-w-4xl mx-auto" data-ocid="career_roadmap.page">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white">Career Roadmap</h1>
-          <p className="text-white/40 text-sm mt-0.5">
-            Track your progress from student to hired professional
-          </p>
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Career Roadmap</h1>
+            <p className="text-white/40 text-sm mt-0.5">
+              Track your progress from student to hired professional
+            </p>
+          </div>
+          <span
+            className="text-sm font-medium px-3 py-1.5 rounded-full border"
+            style={{
+              color: streamDef.color,
+              background: `${streamDef.color}15`,
+              borderColor: `${streamDef.color}35`,
+            }}
+          >
+            {streamDef.label}
+          </span>
         </div>
 
         {/* Role selector + progress */}
@@ -90,11 +206,38 @@ export default function CareerRoadmap() {
                   onChange={(e) => setSelectedRole(e.target.value)}
                   className="input-dark pr-8 appearance-none py-2 text-sm"
                 >
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r} value={r} style={{ background: "#0B1236" }}>
-                      {r}
-                    </option>
-                  ))}
+                  {streamRoleNames.length > 0 && (
+                    <optgroup
+                      label={`${streamDef.label} Roles`}
+                      style={{ background: "#0B1236" }}
+                    >
+                      {streamRoleNames.map((r) => (
+                        <option
+                          key={r}
+                          value={r}
+                          style={{ background: "#0B1236" }}
+                        >
+                          {r}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {legacyRoleNames.length > 0 && (
+                    <optgroup
+                      label="Other Roles"
+                      style={{ background: "#0B1236" }}
+                    >
+                      {legacyRoleNames.map((r) => (
+                        <option
+                          key={r}
+                          value={r}
+                          style={{ background: "#0B1236" }}
+                        >
+                          {r}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
                 <ChevronDown
                   size={14}
@@ -221,7 +364,11 @@ export default function CareerRoadmap() {
                           />
                         )}
                         <span
-                          className={`text-sm flex-1 ${isDone ? "text-white/60 line-through" : "text-white/80"}`}
+                          className={`text-sm flex-1 ${
+                            isDone
+                              ? "text-white/60 line-through"
+                              : "text-white/80"
+                          }`}
                         >
                           {item.label}
                         </span>
@@ -244,6 +391,17 @@ export default function CareerRoadmap() {
             );
           })}
         </div>
+
+        {ALL_ROLE_OPTIONS.length === 0 && (
+          <div
+            className="glass-card p-8 text-center"
+            data-ocid="career_roadmap.empty_state"
+          >
+            <p className="text-white/40">
+              No roles found. Please select a stream first.
+            </p>
+          </div>
+        )}
       </div>
     </AppShell>
   );

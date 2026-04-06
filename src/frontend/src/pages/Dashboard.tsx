@@ -470,6 +470,26 @@ export default function Dashboard() {
               Your personalized career platform
             </p>
           </div>
+          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+            <span
+              className="text-xs font-semibold px-3 py-1.5 rounded-full border"
+              style={{
+                color: streamDef.color,
+                background: `${streamDef.color}15`,
+                borderColor: `${streamDef.color}35`,
+              }}
+              data-ocid="dashboard.stream.badge"
+            >
+              {streamDef.label}
+            </span>
+            <Link
+              to="/stream-select"
+              className="text-white/30 text-[10px] hover:text-white/60 transition-colors"
+              data-ocid="dashboard.change_stream.link"
+            >
+              Change Stream
+            </Link>
+          </div>
         </div>
 
         {/* Feature Navigation Grid */}

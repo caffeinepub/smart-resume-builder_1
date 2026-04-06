@@ -20,6 +20,7 @@ import {
   Mic,
   Moon,
   Search,
+  Settings,
   Sun,
   Target,
   TrendingUp,
@@ -27,7 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { clearStoredAuth, getStoredAuth } from "../utils/auth";
+import { clearStoredAuth, getStoredAuth, getUserStream } from "../utils/auth";
 import {
   type Notification,
   addNotification,
@@ -38,6 +39,8 @@ import {
   setDarkMode,
   updateStreak,
 } from "../utils/extras";
+import { clearCurrentRole } from "../utils/roleAuth";
+import { STREAMS, type StreamId, getStreamById } from "../utils/streamData";
 
 const navItems = [
   {
@@ -145,6 +148,7 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [streamId, setStreamId] = useState<string>("cse");
   const notifRef = useRef<HTMLDivElement>(null);
 
   const routerState = useRouterState();
@@ -170,23 +174,31 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
     setStreak(s);
     setNotifications(getNotifications());
     setUnreadCount(getUnreadCount());
+    // Read stream
+    const currentStream = getUserStream();
+    setStreamId(currentStream || "cse");
     if (s > 0) {
       const streakKey = `streak_notif_${auth?.phone ?? "guest"}_${s}`;
       if (!sessionStorage.getItem(streakKey)) {
         sessionStorage.setItem(streakKey, "1");
-        addNotification(`🔥 Day ${s} streak! Keep up the great work!`);
+        addNotification(
+          `\uD83D\uDD25 Day ${s} streak! Keep up the great work!`,
+        );
       }
     }
     const welcomeKey = `welcome_notif_shown_${auth?.phone ?? "guest"}`;
     if (!sessionStorage.getItem(welcomeKey)) {
       sessionStorage.setItem(welcomeKey, "1");
       addNotification(
-        `👋 Welcome back, ${auth?.name ?? "User"}! Your career journey continues.`,
+        `\uD83D\uDC4B Welcome back, ${auth?.name ?? "User"}! Your career journey continues.`,
       );
     }
     setNotifications(getNotifications());
     setUnreadCount(getUnreadCount());
   }, []);
+
+  const streamDef = getStreamById(streamId);
+  const streamValid = STREAMS[streamId as StreamId] != null;
 
   const handleDarkToggle = () => {
     const newVal = !darkMode;
@@ -202,7 +214,8 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
 
   const handleLogout = () => {
     clearStoredAuth();
-    navigate({ to: "/login" });
+    clearCurrentRole();
+    navigate({ to: "/" });
   };
 
   return (
@@ -327,8 +340,48 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
           </button>
         </div>
 
+        {/* Stream Badge */}
+        {streamValid && (
+          <div className="px-3 pt-3 pb-1">
+            <div
+              className="flex items-center justify-between px-3 py-2 rounded-xl"
+              style={{
+                background: `${streamDef.color}12`,
+                border: `1px solid ${streamDef.color}28`,
+              }}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                  style={{ background: `${streamDef.color}25` }}
+                >
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: streamDef.color }}
+                  />
+                </div>
+                <span
+                  className="text-xs font-semibold truncate"
+                  style={{ color: streamDef.color }}
+                >
+                  {streamDef.label}
+                </span>
+              </div>
+              <Link
+                to="/stream-select"
+                className="text-white/30 hover:text-white/70 transition-colors flex-shrink-0"
+                title="Change stream"
+                onClick={() => setSidebarOpen(false)}
+                data-ocid="nav.change_stream.link"
+              >
+                <Settings size={12} />
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-0.5">
+        <nav className="flex-1 px-3 py-2 overflow-y-auto space-y-0.5">
           {navItems.map((item) => {
             const isActive = currentPath === item.path;
             const Icon = item.icon;
@@ -358,7 +411,9 @@ export default function AppShell({ children, title, subtitle }: AppShellProps) {
               <span className="text-orange-300 text-sm font-semibold">
                 {streak} day streak
               </span>
-              <span className="text-orange-400/60 text-xs ml-auto">🔥</span>
+              <span className="text-orange-400/60 text-xs ml-auto">
+                \uD83D\uDD25
+              </span>
             </div>
           )}
 

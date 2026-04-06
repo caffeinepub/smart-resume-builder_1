@@ -7,262 +7,434 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import AppShell from "../components/AppShell";
-import { getUserKey } from "../utils/auth";
+import { getUserKey, getUserStream } from "../utils/auth";
 import { addNotification } from "../utils/extras";
+import { getStreamById } from "../utils/streamData";
 
 type ProjectStatus = "Not Started" | "In Progress" | "Completed";
 
 interface ProjectIdea {
   id: string;
   name: string;
-  description: string;
+  desc: string;
   technologies: string[];
   difficulty: "Beginner" | "Intermediate" | "Advanced";
-  features: string[];
   resumeWorth: number;
 }
 
-const PROJECTS: ProjectIdea[] = [
-  {
-    id: "todo",
-    name: "ToDo App",
-    description:
-      "A clean task manager with categories, priorities, and persistent storage using localStorage.",
-    technologies: ["HTML", "CSS", "JavaScript", "LocalStorage"],
-    difficulty: "Beginner",
-    features: [
-      "Add/remove/edit tasks",
-      "Mark complete",
-      "Filter by status",
-      "Dark mode",
-      "Categories",
-    ],
-    resumeWorth: 3,
-  },
-  {
-    id: "calc",
-    name: "Scientific Calculator",
-    description:
-      "A fully functional calculator with basic and scientific operations, history log, and keyboard support.",
-    technologies: ["HTML", "CSS", "JavaScript"],
-    difficulty: "Beginner",
-    features: [
-      "Basic/scientific ops",
-      "History log",
-      "Keyboard support",
-      "Responsive design",
-    ],
-    resumeWorth: 2,
-  },
-  {
-    id: "portfolio",
-    name: "Portfolio Website",
-    description:
-      "A personal portfolio showcasing projects, skills, and contact information with smooth animations.",
-    technologies: ["HTML", "CSS", "JavaScript", "Animations"],
-    difficulty: "Beginner",
-    features: [
-      "Responsive design",
-      "Projects showcase",
-      "Contact form",
-      "Smooth animations",
-      "Dark/light mode",
-    ],
-    resumeWorth: 4,
-  },
-  {
-    id: "quiz",
-    name: "Quiz App",
-    description:
-      "An interactive quiz application with multiple categories, timer, score tracking, and leaderboard.",
-    technologies: ["HTML", "CSS", "JavaScript", "JSON"],
-    difficulty: "Beginner",
-    features: [
-      "Timer per question",
-      "Multiple categories",
-      "Score tracking",
-      "Leaderboard",
-      "Progress bar",
-    ],
-    resumeWorth: 3,
-  },
-  {
-    id: "student-mgr",
-    name: "Student Manager",
-    description:
-      "A CRUD application to manage student records with search, filter, and grade calculator features.",
-    technologies: ["React", "LocalStorage"],
-    difficulty: "Beginner",
-    features: [
-      "CRUD operations",
-      "Search and filter",
-      "Grade calculator",
-      "Data export",
-      "Responsive UI",
-    ],
-    resumeWorth: 3,
-  },
-  {
-    id: "resume-builder",
-    name: "Resume Builder",
-    description:
-      "A drag-and-drop resume builder with live preview, PDF export, and multiple professional templates.",
-    technologies: ["React", "PDF.js", "TypeScript"],
-    difficulty: "Intermediate",
-    features: [
-      "Live preview",
-      "PDF export",
-      "Multiple templates",
-      "Form validation",
-      "Auto-save",
-    ],
-    resumeWorth: 5,
-  },
-  {
-    id: "chat-app",
-    name: "Real-Time Chat App",
-    description:
-      "A full-stack chat application with real-time messaging, multiple rooms, and file sharing.",
-    technologies: ["React", "Socket.io", "Node.js", "Express"],
-    difficulty: "Intermediate",
-    features: [
-      "Real-time messaging",
-      "Chat rooms",
-      "File sharing",
-      "Online indicators",
-      "Notifications",
-    ],
-    resumeWorth: 4,
-  },
-  {
-    id: "code-editor",
-    name: "Online Code Editor",
-    description:
-      "A browser-based code editor supporting multiple languages with syntax highlighting and live execution.",
-    technologies: ["React", "Monaco Editor", "CodeMirror"],
-    difficulty: "Intermediate",
-    features: [
-      "Multi-language support",
-      "Syntax highlighting",
-      "Run code",
-      "Save snippets",
-      "Share code",
-    ],
-    resumeWorth: 4,
-  },
-  {
-    id: "blog-platform",
-    name: "Blog Platform",
-    description:
-      "A full-featured blogging platform with markdown support, categories, tags, and comment system.",
-    technologies: ["React", "Node.js", "MongoDB", "Markdown"],
-    difficulty: "Intermediate",
-    features: [
-      "CRUD posts",
-      "Markdown support",
-      "Categories",
-      "Comment system",
-      "Search",
-    ],
-    resumeWorth: 4,
-  },
-  {
-    id: "job-portal",
-    name: "Job Portal",
-    description:
-      "A complete job portal with listings, apply system, company profiles, and smart search filters.",
-    technologies: ["React", "Node.js", "Express", "MongoDB"],
-    difficulty: "Intermediate",
-    features: [
-      "Job listings",
-      "Application system",
-      "Company profiles",
-      "Smart filters",
-      "Saved jobs",
-    ],
-    resumeWorth: 5,
-  },
-  {
-    id: "ai-resume",
-    name: "AI Resume Analyzer",
-    description:
-      "ML-powered resume analyzer using NLP to extract skills, compute ATS score, and provide actionable suggestions.",
-    technologies: ["React", "Python", "FastAPI", "ML/NLP"],
-    difficulty: "Advanced",
-    features: [
-      "NLP processing",
-      "ATS score",
-      "Skill extraction",
-      "AI suggestions",
-      "PDF parsing",
-    ],
-    resumeWorth: 5,
-  },
-  {
-    id: "face-attendance",
-    name: "Face Recognition Attendance",
-    description:
-      "Real-time face detection system for automated attendance management with reports and analytics dashboard.",
-    technologies: ["Python", "OpenCV", "Flask", "Face Recognition"],
-    difficulty: "Advanced",
-    features: [
-      "Real-time detection",
-      "Attendance log",
-      "Reports dashboard",
-      "Multi-face support",
-      "Export data",
-    ],
-    resumeWorth: 5,
-  },
-  {
-    id: "healthcare",
-    name: "Smart Healthcare System",
-    description:
-      "Patient management system with symptom checker, AI-powered doctor matching, and appointment scheduling.",
-    technologies: ["React", "Node.js", "Python", "ML"],
-    difficulty: "Advanced",
-    features: [
-      "Patient records",
-      "Symptom checker",
-      "Doctor matching",
-      "Appointments",
-      "Health analytics",
-    ],
-    resumeWorth: 5,
-  },
-  {
-    id: "interview-platform",
-    name: "Online Interview Platform",
-    description:
-      "WebRTC-based video interview platform with integrated code editor, recording, and AI feedback system.",
-    technologies: ["React", "WebRTC", "Node.js", "Socket.io"],
-    difficulty: "Advanced",
-    features: [
-      "Video calls",
-      "Live code editor",
-      "Recording",
-      "AI feedback",
-      "Interview scheduling",
-    ],
-    resumeWorth: 5,
-  },
-  {
-    id: "ai-career",
-    name: "AI Career Guidance System",
-    description:
-      "Intelligent career advisor using GPT to analyze skills, predict career paths, and recommend learning resources.",
-    technologies: ["React", "Python", "OpenAI API", "ML"],
-    difficulty: "Advanced",
-    features: [
-      "Skill analysis",
-      "Career path prediction",
-      "Resource recommendations",
-      "Progress tracking",
-      "Chat interface",
-    ],
-    resumeWorth: 5,
-  },
-];
+// ============================================================
+// Stream-specific project banks
+// ============================================================
+const STREAM_PROJECTS: Record<string, ProjectIdea[]> = {
+  cse: [
+    {
+      id: "web-app",
+      name: "Personal Portfolio Website",
+      desc: "Build a responsive portfolio with React showcasing your projects and skills",
+      difficulty: "Beginner",
+      technologies: ["HTML", "CSS", "JavaScript", "React"],
+      resumeWorth: 4,
+    },
+    {
+      id: "chat-app",
+      name: "Real-Time Chat Application",
+      desc: "Full-stack chat app with Socket.io, authentication and message history",
+      difficulty: "Intermediate",
+      technologies: ["React", "Node.js", "Socket.io", "MongoDB"],
+      resumeWorth: 5,
+    },
+    {
+      id: "ai-chatbot",
+      name: "AI Chatbot Integration",
+      desc: "Integrate OpenAI API to build a domain-specific chatbot with custom prompts",
+      difficulty: "Intermediate",
+      technologies: ["Python", "FastAPI", "OpenAI API", "React"],
+      resumeWorth: 5,
+    },
+    {
+      id: "mobile-app",
+      name: "Mobile Task Manager App",
+      desc: "Cross-platform mobile app with offline sync, notifications and cloud backup",
+      difficulty: "Advanced",
+      technologies: ["React Native", "Firebase", "Expo"],
+      resumeWorth: 5,
+    },
+    {
+      id: "ml-classifier",
+      name: "ML Image Classifier",
+      desc: "Train a CNN model to classify images, deploy as REST API",
+      difficulty: "Advanced",
+      technologies: ["Python", "TensorFlow", "Flask", "Docker"],
+      resumeWorth: 5,
+    },
+    {
+      id: "dsa-visualizer",
+      name: "DSA Visualizer",
+      desc: "Interactive visualization of sorting, searching and graph algorithms",
+      difficulty: "Intermediate",
+      technologies: ["React", "TypeScript", "Canvas API"],
+      resumeWorth: 4,
+    },
+  ],
+  mechanical: [
+    {
+      id: "cad-model",
+      name: "CAD Assembly Model",
+      desc: "Design a complete mechanical assembly (engine/pump) using AutoCAD or SolidWorks with detailed drawings",
+      difficulty: "Beginner",
+      technologies: ["AutoCAD", "SolidWorks"],
+      resumeWorth: 4,
+    },
+    {
+      id: "mini-engine",
+      name: "Mini Engine Model",
+      desc: "Build and test a scaled-down IC engine model demonstrating thermodynamic principles",
+      difficulty: "Intermediate",
+      technologies: ["Workshop Skills", "Mechanical Design", "Testing"],
+      resumeWorth: 5,
+    },
+    {
+      id: "automation",
+      name: "Industrial Automation System",
+      desc: "Design PLC-based automation for a production line with sensors and actuators",
+      difficulty: "Advanced",
+      technologies: ["PLC", "SCADA", "AutoCAD", "Sensors"],
+      resumeWorth: 5,
+    },
+    {
+      id: "stress-analysis",
+      name: "Stress Analysis Project",
+      desc: "FEA analysis of a structural component under various load conditions",
+      difficulty: "Intermediate",
+      technologies: ["ANSYS", "SolidWorks Simulation", "MATLAB"],
+      resumeWorth: 4,
+    },
+    {
+      id: "hvac-design",
+      name: "HVAC System Design",
+      desc: "Complete design of heating, ventilation and cooling system for a commercial building",
+      difficulty: "Advanced",
+      technologies: [
+        "AutoCAD MEP",
+        "Heat Transfer Calculations",
+        "HVAC Standards",
+      ],
+      resumeWorth: 5,
+    },
+    {
+      id: "conveyor",
+      name: "Conveyor Belt System",
+      desc: "Design and build a small-scale conveyor belt with motor control and speed regulation",
+      difficulty: "Beginner",
+      technologies: ["Mechanical Design", "Basic Electronics", "AutoCAD"],
+      resumeWorth: 3,
+    },
+  ],
+  electrical: [
+    {
+      id: "smart-grid",
+      name: "Smart Grid Simulation",
+      desc: "Simulate a smart power grid with load balancing, fault detection and renewable integration",
+      difficulty: "Advanced",
+      technologies: ["MATLAB", "Simulink", "Power Electronics"],
+      resumeWorth: 5,
+    },
+    {
+      id: "iot-circuit",
+      name: "IoT Home Automation Circuit",
+      desc: "Design circuit for remotely controlling home appliances via smartphone using ESP32",
+      difficulty: "Intermediate",
+      technologies: ["ESP32", "Arduino", "PCB Design", "IoT"],
+      resumeWorth: 5,
+    },
+    {
+      id: "pcb-design",
+      name: "PCB Design Project",
+      desc: "Design and fabricate a custom PCB for a microcontroller-based application",
+      difficulty: "Intermediate",
+      technologies: ["Eagle/KiCad", "Circuit Design", "Soldering"],
+      resumeWorth: 4,
+    },
+    {
+      id: "plc-automation",
+      name: "PLC Ladder Logic Automation",
+      desc: "Program PLC ladder logic for industrial process control simulation",
+      difficulty: "Intermediate",
+      technologies: ["PLC", "Ladder Logic", "SCADA", "HMI"],
+      resumeWorth: 4,
+    },
+    {
+      id: "power-supply",
+      name: "Variable Power Supply Design",
+      desc: "Design and build a variable DC power supply with overload protection",
+      difficulty: "Beginner",
+      technologies: ["Circuit Design", "Transformers", "Voltage Regulators"],
+      resumeWorth: 3,
+    },
+    {
+      id: "renewable-energy",
+      name: "Renewable Energy Monitor",
+      desc: "Solar panel monitoring system with data logging and efficiency analysis",
+      difficulty: "Advanced",
+      technologies: ["Embedded C", "Sensors", "Data Analytics", "Arduino"],
+      resumeWorth: 5,
+    },
+  ],
+  civil: [
+    {
+      id: "structural-design",
+      name: "Structural Analysis of RCC Beam",
+      desc: "Complete structural analysis and design of reinforced concrete beam under various loads",
+      difficulty: "Intermediate",
+      technologies: ["STAAD Pro", "AutoCAD", "IS Codes"],
+      resumeWorth: 5,
+    },
+    {
+      id: "urban-planning",
+      name: "Urban Planning Layout",
+      desc: "Master plan for a residential township including roads, utilities and green spaces",
+      difficulty: "Advanced",
+      technologies: ["AutoCAD", "GIS", "Urban Planning Standards"],
+      resumeWorth: 5,
+    },
+    {
+      id: "water-supply",
+      name: "Water Supply System Design",
+      desc: "Design water distribution network for a residential colony with demand calculations",
+      difficulty: "Intermediate",
+      technologies: ["AutoCAD", "EPANET", "Hydraulic Calculations"],
+      resumeWorth: 4,
+    },
+    {
+      id: "soil-testing",
+      name: "Soil Investigation Report",
+      desc: "Conduct geotechnical soil testing and prepare investigation report with foundation recommendations",
+      difficulty: "Beginner",
+      technologies: ["Soil Testing", "Lab Analysis", "Report Writing"],
+      resumeWorth: 3,
+    },
+    {
+      id: "bim-model",
+      name: "BIM Model with Revit",
+      desc: "Create complete 3D BIM model of a building including MEP, structural and architectural details",
+      difficulty: "Advanced",
+      technologies: ["Revit", "AutoCAD", "BIM Standards"],
+      resumeWorth: 5,
+    },
+    {
+      id: "cost-estimate",
+      name: "Construction Cost Estimation",
+      desc: "Detailed bill of quantities and cost estimation for a 3-storey building",
+      difficulty: "Beginner",
+      technologies: ["MS Excel", "IS Rate Analysis", "BOQ"],
+      resumeWorth: 3,
+    },
+  ],
+  mba: [
+    {
+      id: "market-analysis",
+      name: "Market Analysis Report",
+      desc: "Comprehensive market analysis for a product launch including SWOT, competitor analysis and market sizing",
+      difficulty: "Beginner",
+      technologies: ["Excel", "PowerPoint", "Research Methods"],
+      resumeWorth: 4,
+    },
+    {
+      id: "business-plan",
+      name: "Business Plan Development",
+      desc: "Complete business plan for a startup with financial projections, marketing strategy and operational plan",
+      difficulty: "Intermediate",
+      technologies: ["Excel", "PowerPoint", "Financial Modeling"],
+      resumeWorth: 5,
+    },
+    {
+      id: "digital-marketing",
+      name: "Digital Marketing Campaign",
+      desc: "Plan and execute a complete digital marketing campaign with SEO, social media and analytics",
+      difficulty: "Intermediate",
+      technologies: ["Google Analytics", "Social Media", "SEO Tools"],
+      resumeWorth: 4,
+    },
+    {
+      id: "hr-policy",
+      name: "HR Policy Framework",
+      desc: "Design a comprehensive HR policy framework including recruitment, training and performance management",
+      difficulty: "Intermediate",
+      technologies: ["HR Systems", "Policy Writing", "Excel"],
+      resumeWorth: 4,
+    },
+    {
+      id: "financial-model",
+      name: "Financial Modeling Project",
+      desc: "Build a 3-statement financial model (P&L, Balance Sheet, Cash Flow) for a company",
+      difficulty: "Advanced",
+      technologies: ["Excel", "Financial Statements", "Valuation"],
+      resumeWorth: 5,
+    },
+    {
+      id: "supply-chain",
+      name: "Supply Chain Optimization",
+      desc: "Analyze and optimize a company's supply chain using lean principles and data analysis",
+      difficulty: "Advanced",
+      technologies: ["Excel", "Process Mapping", "Analytics"],
+      resumeWorth: 5,
+    },
+  ],
+  medical: [
+    {
+      id: "healthcare-survey",
+      name: "Healthcare Survey & Analysis",
+      desc: "Conduct a community health survey, analyze data and present public health recommendations",
+      difficulty: "Beginner",
+      technologies: ["SPSS", "Excel", "Research Methods"],
+      resumeWorth: 4,
+    },
+    {
+      id: "clinical-study",
+      name: "Clinical Study Design",
+      desc: "Design and document a clinical research protocol for a medical intervention study",
+      difficulty: "Advanced",
+      technologies: [
+        "Clinical Research Methods",
+        "ICH-GCP",
+        "Protocol Writing",
+      ],
+      resumeWorth: 5,
+    },
+    {
+      id: "health-app",
+      name: "Health Tracking Application",
+      desc: "Design (wireframe/prototype) a mobile app for patient vitals monitoring and medication reminders",
+      difficulty: "Intermediate",
+      technologies: ["Figma", "Health Informatics", "UI/UX"],
+      resumeWorth: 4,
+    },
+    {
+      id: "epidemiology",
+      name: "Epidemiological Study",
+      desc: "Conduct a descriptive epidemiological study on a local health issue with statistical analysis",
+      difficulty: "Intermediate",
+      technologies: ["Epidemiology", "Statistics", "SPSS"],
+      resumeWorth: 4,
+    },
+    {
+      id: "medical-record",
+      name: "Medical Record System Prototype",
+      desc: "Design a simple electronic medical records system with patient management and reporting",
+      difficulty: "Intermediate",
+      technologies: ["System Design", "Healthcare IT", "Documentation"],
+      resumeWorth: 4,
+    },
+    {
+      id: "nutrition-analysis",
+      name: "Nutritional Analysis Project",
+      desc: "Assess dietary patterns of a target population and provide evidence-based nutrition recommendations",
+      difficulty: "Beginner",
+      technologies: ["Nutrition Science", "Data Collection", "Reporting"],
+      resumeWorth: 3,
+    },
+  ],
+  commerce: [
+    {
+      id: "financial-analysis",
+      name: "Company Financial Analysis",
+      desc: "Analyze a listed company's financial statements with ratio analysis and investment recommendation",
+      difficulty: "Intermediate",
+      technologies: ["Excel", "Financial Ratios", "Accounting Standards"],
+      resumeWorth: 5,
+    },
+    {
+      id: "tax-planning",
+      name: "Tax Planning Case Study",
+      desc: "Prepare a comprehensive tax planning study for an individual and company under Income Tax Act",
+      difficulty: "Intermediate",
+      technologies: ["Income Tax", "Tally ERP", "Tax Laws"],
+      resumeWorth: 4,
+    },
+    {
+      id: "audit-report",
+      name: "Internal Audit Report",
+      desc: "Conduct internal audit of a small business and prepare audit report with findings and recommendations",
+      difficulty: "Advanced",
+      technologies: ["Auditing Standards", "Tally", "Excel"],
+      resumeWorth: 5,
+    },
+    {
+      id: "gst-project",
+      name: "GST Compliance Project",
+      desc: "Set up complete GST compliance system for a small business including registration, returns and reconciliation",
+      difficulty: "Beginner",
+      technologies: ["GST Portal", "Tally ERP", "Tax Laws"],
+      resumeWorth: 3,
+    },
+    {
+      id: "mutual-fund",
+      name: "Mutual Fund Portfolio Analysis",
+      desc: "Analyze and compare mutual fund schemes, build an optimal portfolio based on risk profile",
+      difficulty: "Intermediate",
+      technologies: ["Excel", "Financial Analysis", "Investment Knowledge"],
+      resumeWorth: 4,
+    },
+    {
+      id: "banking-operations",
+      name: "Banking Operations Study",
+      desc: "Study and document banking operations, credit appraisal process and risk management practices",
+      difficulty: "Beginner",
+      technologies: ["Banking Knowledge", "Report Writing", "Excel"],
+      resumeWorth: 3,
+    },
+  ],
+  arts: [
+    {
+      id: "brand-identity",
+      name: "Brand Identity Design",
+      desc: "Create complete brand identity package (logo, colors, typography, guidelines) for a startup",
+      difficulty: "Beginner",
+      technologies: ["Adobe Illustrator", "Figma", "Brand Strategy"],
+      resumeWorth: 4,
+    },
+    {
+      id: "ux-case-study",
+      name: "UX Design Case Study",
+      desc: "Full UX research and design project: user research, wireframes, prototypes and usability testing",
+      difficulty: "Intermediate",
+      technologies: ["Figma", "User Research", "Prototyping"],
+      resumeWorth: 5,
+    },
+    {
+      id: "motion-graphics",
+      name: "Motion Graphics Video",
+      desc: "Create animated explainer video or title sequence using motion graphics techniques",
+      difficulty: "Intermediate",
+      technologies: ["After Effects", "Premiere Pro", "Storyboarding"],
+      resumeWorth: 4,
+    },
+    {
+      id: "photo-series",
+      name: "Documentary Photography Series",
+      desc: "Create a cohesive photo documentary series with editorial writeup and portfolio presentation",
+      difficulty: "Beginner",
+      technologies: ["Photography", "Adobe Lightroom", "Storytelling"],
+      resumeWorth: 3,
+    },
+    {
+      id: "fashion-collection",
+      name: "Fashion Collection Design",
+      desc: "Design a 5-piece fashion collection with mood board, fabric selection and technical sketches",
+      difficulty: "Intermediate",
+      technologies: ["Illustration", "Adobe Photoshop", "Fashion Design"],
+      resumeWorth: 4,
+    },
+    {
+      id: "social-campaign",
+      name: "Social Media Content Campaign",
+      desc: "Plan and create a complete social media content campaign with strategy, visuals and copy",
+      difficulty: "Beginner",
+      technologies: ["Canva", "Social Media Strategy", "Content Creation"],
+      resumeWorth: 3,
+    },
+  ],
+};
 
 const CATEGORIES = ["All", "Beginner", "Intermediate", "Advanced"];
 
@@ -337,14 +509,21 @@ function StarRating({ count }: { count: number }) {
 }
 
 export default function ProjectIdeas() {
+  const userStream = getUserStream();
+  const streamDef = getStreamById(userStream);
+
+  // Fallback to cse if stream not found
+  const projects = STREAM_PROJECTS[userStream] ?? STREAM_PROJECTS.cse;
+
   const [activeCategory, setActiveCategory] = useState("All");
   const [statuses, setStatuses] =
     useState<Record<string, ProjectStatus>>(loadStatuses);
 
   const filtered =
     activeCategory === "All"
-      ? PROJECTS
-      : PROJECTS.filter((p) => p.difficulty === activeCategory);
+      ? projects
+      : projects.filter((p) => p.difficulty === activeCategory);
+
   const completedCount = Object.values(statuses).filter(
     (s) => s === "Completed",
   ).length;
@@ -360,33 +539,48 @@ export default function ProjectIdeas() {
 
   return (
     <AppShell
-      title="CSE Project Ideas"
+      title={`${streamDef.label} Projects`}
       subtitle="Build portfolio-worthy projects"
     >
       <div className="max-w-7xl mx-auto" data-ocid="projects.page">
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">
-              CSE Project Ideas Hub
+              {streamDef.label} Project Ideas
             </h1>
             <p className="text-white/40 text-sm">
-              15 carefully curated projects from beginner to advanced
+              {projects.length} carefully curated projects from beginner to
+              advanced
             </p>
           </div>
-          {completedCount > 0 && (
-            <div
-              className="flex items-center gap-2 px-4 py-2 rounded-full flex-shrink-0"
+          <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
+            {/* Stream badge */}
+            <span
+              className="text-xs font-semibold px-3 py-1.5 rounded-full border"
               style={{
-                background: "rgba(57,217,138,0.15)",
-                border: "1px solid rgba(57,217,138,0.3)",
+                color: streamDef.color,
+                background: `${streamDef.color}15`,
+                borderColor: `${streamDef.color}35`,
               }}
+              data-ocid="projects.stream.badge"
             >
-              <CheckCircle2 size={15} className="text-green-400" />
-              <span className="text-green-400 font-semibold text-sm">
-                Completed: {completedCount}
-              </span>
-            </div>
-          )}
+              {streamDef.icon} {streamDef.label}
+            </span>
+            {completedCount > 0 && (
+              <div
+                className="flex items-center gap-2 px-4 py-2 rounded-full"
+                style={{
+                  background: "rgba(57,217,138,0.15)",
+                  border: "1px solid rgba(57,217,138,0.3)",
+                }}
+              >
+                <CheckCircle2 size={15} className="text-green-400" />
+                <span className="text-green-400 font-semibold text-sm">
+                  Completed: {completedCount}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div
@@ -453,7 +647,7 @@ export default function ProjectIdeas() {
                 </div>
 
                 <p className="text-white/50 text-sm leading-relaxed">
-                  {project.description}
+                  {project.desc}
                 </p>
 
                 <div className="flex flex-wrap gap-1.5">
@@ -462,25 +656,6 @@ export default function ProjectIdeas() {
                       {tech}
                     </span>
                   ))}
-                </div>
-
-                <div>
-                  <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-1.5">
-                    Key Features
-                  </p>
-                  <ul className="space-y-0.5">
-                    {project.features.map((f) => (
-                      <li
-                        key={f}
-                        className="text-white/60 text-xs flex items-start gap-1.5"
-                      >
-                        <span className="text-purple-400 mt-0.5 flex-shrink-0">
-                          ›
-                        </span>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
                 </div>
 
                 <div className="flex items-center gap-2">

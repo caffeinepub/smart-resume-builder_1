@@ -11,7 +11,11 @@ import {
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import AppShell from "../components/AppShell";
-import { getScoreColor, getScoreLabel, scoreResume } from "../utils/atsEngine";
+import {
+  analyzeResume,
+  getScoreColor,
+  getScoreLabel,
+} from "../utils/atsEngine";
 import { getUserStream } from "../utils/auth";
 import { addNotification } from "../utils/extras";
 import { loadATSResult, saveATSResult } from "../utils/storage";
@@ -128,8 +132,10 @@ export default function ATSAnalyzer() {
         return;
       }
       setTimeout(() => {
-        const r = scoreResume(text);
-        // Enrich with stream keywords check
+        // Pass the user's stream to the engine
+        const r = analyzeResume(text, userStream);
+
+        // Enrich with stream keywords check for the suggestion line
         const textLower = text.toLowerCase();
         const foundStreamKeywords = streamKeywords.filter((k) =>
           textLower.includes(k.toLowerCase()),
@@ -137,20 +143,30 @@ export default function ATSAnalyzer() {
         const missingStreamKeywords = streamKeywords.filter(
           (k) => !textLower.includes(k.toLowerCase()),
         );
-        // Merge stream keywords into existing missing skills
+
+        // Merge any additional stream keywords into missing skills
         const enrichedMissingSkills = Array.from(
           new Set([...r.missingSkills, ...missingStreamKeywords.slice(0, 3)]),
         ).slice(0, 8);
+
+        const streamSuggestion =
+          foundStreamKeywords.length < 3
+            ? `Add more ${streamDef.label} keywords: ${missingStreamKeywords
+                .slice(0, 3)
+                .join(", ")}`
+            : `Good use of ${streamDef.label} keywords! Found: ${foundStreamKeywords
+                .slice(0, 3)
+                .join(", ")}`;
+
         const enrichedResult: ATSResult = {
           ...r,
           missingSkills: enrichedMissingSkills,
-          suggestions: [
-            ...r.suggestions,
-            foundStreamKeywords.length < 3
-              ? `Add more ${streamDef.label} keywords: ${missingStreamKeywords.slice(0, 3).join(", ")}`
-              : `Good use of ${streamDef.label} keywords! Found: ${foundStreamKeywords.slice(0, 3).join(", ")}`,
-          ].slice(0, 6),
+          suggestions: [...r.suggestions.slice(0, 5), streamSuggestion].slice(
+            0,
+            6,
+          ),
         };
+
         setResult(enrichedResult);
         saveATSResult(enrichedResult);
         addNotification("ATS Analysis Completed");
@@ -206,7 +222,7 @@ export default function ATSAnalyzer() {
           </span>
         </div>
 
-        {/* Upload area — using a label wrapping a hidden input for best accessibility */}
+        {/* Upload area */}
         <label
           htmlFor="ats-file-input"
           className={`glass-card p-8 mb-6 flex flex-col items-center justify-center text-center border-2 border-dashed transition-all cursor-pointer block ${
